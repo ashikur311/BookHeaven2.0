@@ -1,0 +1,137 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+body {
+  background: #f7f7f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+.bkash-popup {
+  width: 400px;
+  height: 500px;
+  background-image: url("/BookHeaven/asset/bkashlogo.png"); /* Update the path if necessary */
+  background-size: cover;
+  background-position: center;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+.bkash-header {
+  background: rgb(242, 54, 135);
+  padding: 10px;
+  text-align: center;
+}
+.bkash-header img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.bkash-header-hr {
+  border: none;
+  border-top: 1px solid #ddd;
+}
+.bkash-body {
+  flex: 1;
+  padding: 20px;
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.63);
+  border-radius: 5px;
+  color: black;
+}
+.merchant-info {
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  color: #000;
+}
+.invoice-label {
+  font-weight: bold;
+  margin-left: 5px;
+  color: #000;
+}
+.payment-amount {
+  margin: 10px 0;
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #000;
+}
+.bkash-input {
+  margin: 15px 0;
+  text-align: left;
+}
+.bkash-input label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: #000;
+}
+.bkash-input input {
+  width: 100%;
+  padding: 8px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+.terms-text {
+  font-size: 0.8rem;
+  color: #000;
+  margin-top: 10px;
+}
+.terms-text a {
+  color: #ef1673;
+  text-decoration: none;
+}
+.error,
+.success {
+  color: #fff;
+  background: #e74c3c;
+  padding: 8px;
+  margin-top: 10px;
+  border-radius: 4px;
+}
+.success {
+  background: #2ecc71;
+}
+
+/* Footer with vertical buttons (same size) */
+.bkash-footer {
+  background: #f1f1f1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.footer-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 80%;
+  margin-bottom: 10px;
+}
+.footer-buttons button {
+  border: none;
+  background: #ddd;
+  color: #333;
+  padding: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  width: 100%;
+  text-align: center;
+}
+.footer-buttons button:hover {
+  background: #ccc;
+}
+.footer-call {
+  color: #000;
+  font-weight: bold;
+  margin-top: 5px;
+}

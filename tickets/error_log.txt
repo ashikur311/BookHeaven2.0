@@ -1,0 +1,63 @@
+[2025-06-21 21:04:15] Python script output: Traceback (most recent call last):
+  File "C:\xampp\htdocs\BookHeaven2.0\php/sendticket.py", line 17, in <module>
+    logging.FileHandler('tickets/email_log.log'),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1231, in __init__
+    StreamHandler.__init__(self, self._open())
+                                 ^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1263, in _open
+    return open_func(self.baseFilename, self.mode,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\xampp\\htdocs\\BookHeaven2.0\\php\\tickets\\email_log.log'
+
+[2025-06-21 21:04:21] Python script output: Traceback (most recent call last):
+  File "C:\xampp\htdocs\BookHeaven2.0\php/sendticket.py", line 17, in <module>
+    logging.FileHandler('tickets/email_log.log'),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1231, in __init__
+    StreamHandler.__init__(self, self._open())
+                                 ^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1263, in _open
+    return open_func(self.baseFilename, self.mode,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\xampp\\htdocs\\BookHeaven2.0\\php\\tickets\\email_log.log'
+
+[2025-06-21 21:05:04] Python script output: Traceback (most recent call last):
+  File "C:\xampp\htdocs\BookHeaven2.0\php/sendticket.py", line 17, in <module>
+    logging.FileHandler('tickets/email_log.log'),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1231, in __init__
+    StreamHandler.__init__(self, self._open())
+                                 ^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1263, in _open
+    return open_func(self.baseFilename, self.mode,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\xampp\\htdocs\\BookHeaven2.0\\php\\tickets\\email_log.log'
+
+[2025-06-21 21:05:06] Python script output: Traceback (most recent call last):
+  File "C:\xampp\htdocs\BookHeaven2.0\php/sendticket.py", line 17, in <module>
+    logging.FileHandler('tickets/email_log.log'),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1231, in __init__
+    StreamHandler.__init__(self, self._open())
+                                 ^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1263, in _open
+    return open_func(self.baseFilename, self.mode,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\xampp\\htdocs\\BookHeaven2.0\\php\\tickets\\email_log.log'
+
+[2025-06-21 21:17:21] Python script output: Traceback (most recent call last):
+  File "C:\xampp\htdocs\BookHeaven2.0\php/sendticket.py", line 17, in <module>
+    logging.FileHandler('tickets/email_log.log'),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1231, in __init__
+    StreamHandler.__init__(self, self._open())
+                                 ^^^^^^^^^^^^
+  File "C:\msys64\ucrt64\lib\python3.12\logging\__init__.py", line 1263, in _open
+    return open_func(self.baseFilename, self.mode,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\xampp\\htdocs\\BookHeaven2.0\\php\\tickets\\email_log.log'
+
+[2025-06-21 21:20:27] Python script output: 2025-06-22 01:20:27,712 - INFO - Ticket sent successfully to ashikur31169@gmail.com
+Ticket sent successfully.
+
