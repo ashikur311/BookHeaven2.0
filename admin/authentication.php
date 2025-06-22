@@ -481,7 +481,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="text" name="full_name" placeholder="Full Name (optional)" 
                        value="<?php echo isset($_POST['full_name']) ? htmlspecialchars($_POST['full_name']) : ''; ?>">
                 <button type="submit" name="admin_register">Register</button>
-                <p>Already have an account? <a href="#" id="signInLink">Sign In</a></p>
+                
             </form>
         </div>
         
@@ -499,7 +499,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fa-solid fa-eye-slash toggle-password"></i>
                 </div>
                 <button type="submit" name="admin_login">Sign In</button>
-                <p>Don't have an account? <a href="#" id="signUpLink">Register</a></p>
             </form>
         </div>
         

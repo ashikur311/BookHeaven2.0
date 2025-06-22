@@ -185,7 +185,7 @@ function handleAudiobookSubmission()
         $uploadPath = $uploadDir . $fileName;
 
         if (move_uploaded_file($_FILES['audio_poster']['tmp_name'], $uploadPath)) {
-            $poster_url = 'assets/audiobook_covers/' . $fileName;
+            $poster_url = '/../assets/audiobook_covers/' . $fileName;
         } else {
             $_SESSION['error_message'] = "Failed to upload poster image";
             header("Location: add.php#audiobook-tab");
@@ -248,18 +248,42 @@ function handleEventSubmission()
     // Handle file upload
     $banner_url = '';
     if (isset($_FILES['event_banner']) && $_FILES['event_banner']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = 'assets/event_banners/';
+        $uploadDir = __DIR__ . '/../assets/event_banners/';
+
+        // Create directory if it doesn't exist
+        if (!file_exists($uploadDir)) {
+            if (!mkdir($uploadDir, 0755, true)) {
+                $_SESSION['error_message'] = "Failed to create upload directory";
+                header("Location: add.php");
+                exit();
+            }
+        }
+
         $fileExt = pathinfo($_FILES['event_banner']['name'], PATHINFO_EXTENSION);
+
+        // Validate file extension
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+        if (!in_array(strtolower($fileExt), $allowedExtensions)) {
+            $_SESSION['error_message'] = "Invalid image file type. Only JPG, PNG, and GIF are allowed.";
+            header("Location: add.php");
+            exit();
+        }
+
         $fileName = preg_replace('/[^a-zA-Z0-9]/', '_', $name) . '_' . time() . '.' . $fileExt;
         $uploadPath = $uploadDir . $fileName;
 
         if (move_uploaded_file($_FILES['event_banner']['tmp_name'], $uploadPath)) {
-            $banner_url = $uploadPath;
+            // Store relative path in database
+            $banner_url = 'assets/event_banners/' . $fileName;
+        } else {
+            $_SESSION['error_message'] = "Failed to upload event banner";
+            header("Location: add.php");
+            exit();
         }
     }
 
     try {
-        // Insert event
+        // Insert event details into the database
         $stmt = $pdo->prepare("INSERT INTO events (name, venue, event_date, description, banner_url, status) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([$name, $venue, $event_date, $description, $banner_url, $status]);
 
@@ -272,6 +296,7 @@ function handleEventSubmission()
     exit();
 }
 
+
 // Display success/error messages
 $success_message = $_SESSION['success_message'] ?? '';
 $error_message = $_SESSION['error_message'] ?? '';
@@ -283,18 +308,363 @@ unset($_SESSION['error_message']);
 
 <head>
     <meta charset="UTF-8">
-    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Add Content - Admin Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="/BookHeaven2.0/css/admin_add.css">
+    <style>
+        /* Base Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        body.admin-dark-mode {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+        }
+
+        /* Header Styles */
+        .admin_header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: #2c3e50;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-dark-mode .admin_header {
+            background-color: #1a1a1a;
+            border-bottom: 1px solid #333;
+        }
+
+        .logo img {
+            height: 40px;
+        }
+
+        .admin_header_right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .admin_theme_toggle {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* Main Layout */
+        .admin_main {
+            display: flex;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* Sidebar Styles */
+        .admin_sidebar {
+            width: 250px;
+            background-color: #34495e;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+
+        .admin-dark-mode .admin_sidebar {
+            background-color: #252525;
+        }
+
+        .admin_sidebar_nav ul {
+            list-style: none;
+            padding: 1rem 0;
+        }
+
+        .admin_sidebar_nav li a {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem 1.5rem;
+            color: white;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .admin_sidebar_nav li a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .admin_sidebar_nav li a.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .admin_sidebar_nav li a i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content Styles */
+        .admin_main_content {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-x: auto;
+            background-color: #fff;
+        }
+
+        .admin-dark-mode .admin_main_content {
+            background-color: #2d2d2d;
+            color: #f0f0f0;
+        }
+
+        /* Tabs Styles */
+        .admin_tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1.5rem;
+        }
+
+        .admin-dark-mode .admin_tabs {
+            border-bottom-color: #444;
+        }
+
+        .admin_tab {
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .admin_tab.active {
+            border-bottom-color: #3498db;
+            font-weight: bold;
+        }
+
+        .admin-dark-mode .admin_tab.active {
+            border-bottom-color: #5dade2;
+        }
+
+        .admin_tab_content {
+            display: none;
+        }
+
+        .admin_tab_content.active {
+            display: block;
+        }
+
+        /* Form Styles */
+        .admin_form_group {
+            margin-bottom: 1.5rem;
+        }
+
+        .admin_form_group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .admin_form_control {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .admin-dark-mode .admin_form_control {
+            background-color: #3d3d3d;
+            border-color: #555;
+            color: #f0f0f0;
+        }
+
+        .admin_form_control:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .admin-dark-mode .admin_form_control:focus {
+            border-color: #5dade2;
+        }
+
+        textarea.admin_form_control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .admin_btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+
+        .admin-dark-mode .admin_btn {
+            background-color: #5dade2;
+        }
+
+        .admin_btn:hover {
+            background-color: #2980b9;
+        }
+
+        .admin-dark-mode .admin_btn:hover {
+            background-color: #4aa3df;
+        }
+
+        /* Alert Styles */
+        .alert {
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .admin-dark-mode .alert-success {
+            background-color: #1e3a24;
+            color: #d4edda;
+            border-color: #2a4b2f;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .admin-dark-mode .alert-error {
+            background-color: #3a1e22;
+            color: #f8d7da;
+            border-color: #4a2a2f;
+        }
+
+        /* Modal Styles */
+        .admin_modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .admin_modal_content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 5px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .admin-dark-mode .admin_modal_content {
+            background-color: #2d2d2d;
+        }
+
+        .admin_modal_close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Select2 Customization */
+        .select2-container--default .select2-selection--single {
+            height: 42px;
+            border: 1px solid #ddd;
+        }
+
+        .admin-dark-mode .select2-container--default .select2-selection--single {
+            background-color: #3d3d3d;
+            border-color: #555;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 42px;
+            color: #333;
+        }
+
+        .admin-dark-mode .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #f0f0f0;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 992px) {
+            .admin_main {
+                flex-direction: column;
+            }
+
+            .admin_sidebar {
+                width: 100%;
+                position: static;
+                transform: none;
+            }
+
+            .admin_main_content {
+                padding: 1rem;
+            }
+
+            .admin_tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .admin_tab {
+                display: inline-block;
+            }
+        }
+
+        /* Small Mobile Screens */
+        @media (max-width: 576px) {
+            .admin_header {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.5rem;
+            }
+
+            .admin_header_right {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .admin_form_group {
+                margin-bottom: 1rem;
+            }
+
+            .admin_btn {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <div class="mobile-menu-toggle" id="mobileMenuToggle">
-        <i class="fas fa-bars"></i>
-    </div>
     <header>
         <nav class="admin_header">
             <div class="logo">
@@ -333,11 +703,11 @@ unset($_SESSION['error_message']);
         </aside>
         <div class="admin_main_content">
             <!-- Display success/error messages -->
-            <?php if ($success_message): ?>
+            <?php if (isset($success_message) && $success_message): ?>
                 <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
             <?php endif; ?>
 
-            <?php if ($error_message): ?>
+            <?php if (isset($error_message) && $error_message): ?>
                 <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
             <?php endif; ?>
 
@@ -359,14 +729,12 @@ unset($_SESSION['error_message']);
 
                     <div class="admin_form_group">
                         <label for="published">Published Date</label>
-                        <input type="date" inputmode="none" id="published" name="published" class="admin_form_control"
-                            required>
+                        <input type="date" id="published" name="published" class="admin_form_control" required>
                     </div>
 
                     <div class="admin_form_group">
                         <label for="price">Price</label>
-                        <input type="number" inputmode="numeric" pattern="[0-9]*" id="price" name="price"
-                            class="admin_form_control" min="0" step="0.01">
+                        <input type="number" id="price" name="price" class="admin_form_control" min="0" step="0.01">
                     </div>
                     <div class="admin_form_group">
                         <label for="quantity">Quantity</label>
@@ -382,10 +750,12 @@ unset($_SESSION['error_message']);
                         <label for="writer_id">Writer</label>
                         <select id="writer_id" name="writer_id" class="admin_form_control admin_select2" required>
                             <option value="">Select Writer</option>
-                            <?php foreach ($writers as $writer): ?>
-                                <option value="<?= $writer['writer_id'] ?>"><?= htmlspecialchars($writer['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
+                            <?php if (isset($writers)): ?>
+                                <?php foreach ($writers as $writer): ?>
+                                    <option value="<?= $writer['writer_id'] ?>"><?= htmlspecialchars($writer['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                         <small>Can't find the writer? <a href="#" id="addNewWriter">Add New Writer</a></small>
                     </div>
@@ -394,9 +764,11 @@ unset($_SESSION['error_message']);
                         <label for="genre_id">Genre</label>
                         <select id="genre_id" name="genre_id" class="admin_form_control admin_select2" required>
                             <option value="">Select Genre</option>
-                            <?php foreach ($genres as $genre): ?>
-                                <option value="<?= $genre['genre_id'] ?>"><?= htmlspecialchars($genre['name']) ?></option>
-                            <?php endforeach; ?>
+                            <?php if (isset($genres)): ?>
+                                <?php foreach ($genres as $genre): ?>
+                                    <option value="<?= $genre['genre_id'] ?>"><?= htmlspecialchars($genre['name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                         <small>Can't find the genre? <a href="#" id="addNewGenre">Add New Genre</a></small>
                     </div>
@@ -405,9 +777,11 @@ unset($_SESSION['error_message']);
                         <label for="category_id">Category</label>
                         <select id="category_id" name="category_id" class="admin_form_control admin_select2" required>
                             <option value="">Select Category</option>
-                            <?php foreach ($categories as $category): ?>
-                                <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
-                            <?php endforeach; ?>
+                            <?php if (isset($categories)): ?>
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                         <small>Can't find the category? <a href="#" id="addNewCategory">Add New Category</a></small>
                     </div>
@@ -416,10 +790,12 @@ unset($_SESSION['error_message']);
                         <label for="language_id">Language</label>
                         <select id="language_id" name="language_id" class="admin_form_control admin_select2" required>
                             <option value="">Select Language</option>
-                            <?php foreach ($languages as $language): ?>
-                                <option value="<?= $language['language_id'] ?>"><?= htmlspecialchars($language['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
+                            <?php if (isset($languages)): ?>
+                                <?php foreach ($languages as $language): ?>
+                                    <option value="<?= $language['language_id'] ?>"><?= htmlspecialchars($language['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                         <small>Can't find the language? <a href="#" id="addNewLanguage">Add New Language</a></small>
                     </div>
@@ -470,10 +846,12 @@ unset($_SESSION['error_message']);
                         <select id="audio_language_id" name="audio_language_id" class="admin_form_control admin_select2"
                             required>
                             <option value="">Select Language</option>
-                            <?php foreach ($languages as $language): ?>
-                                <option value="<?= $language['language_id'] ?>"><?= htmlspecialchars($language['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
+                            <?php if (isset($languages)): ?>
+                                <?php foreach ($languages as $language): ?>
+                                    <option value="<?= $language['language_id'] ?>"><?= htmlspecialchars($language['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                         <small>Can't find the language? <a href="#" id="addNewLanguage">Add New Language</a></small>
                     </div>
@@ -660,61 +1038,6 @@ unset($_SESSION['error_message']);
             });
         });
 
-        // Mobile menu toggle functionality
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const sidebar = document.querySelector('.admin_sidebar');
-        const body = document.body;
-
-        // Responsive sidebar state management
-        function handleSidebarState() {
-            if (window.innerWidth <= 992) {
-                body.classList.add('sidebar-collapsed');
-                mobileMenuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-            } else {
-                body.classList.remove('sidebar-collapsed');
-            }
-        }
-
-        mobileMenuToggle.addEventListener('click', function () {
-            body.classList.toggle('sidebar-collapsed');
-
-            // Change icon based on state
-            const icon = this.querySelector('i');
-            if (body.classList.contains('sidebar-collapsed')) {
-                icon.classList.replace('fa-bars', 'fa-times');
-            } else {
-                icon.classList.replace('fa-times', 'fa-bars');
-            }
-        });
-
-        // Close sidebar when clicking on a link (for mobile)
-        document.querySelectorAll('.admin_sidebar_nav a').forEach(link => {
-            link.addEventListener('click', function () {
-                if (window.innerWidth <= 992) {
-                    body.classList.add('sidebar-collapsed');
-                    mobileMenuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-                }
-            });
-        });
-
-        // Close sidebar when clicking outside (for mobile)
-        document.addEventListener('click', function (e) {
-            if (window.innerWidth > 992) return;
-
-            const isClickInsideSidebar = sidebar.contains(e.target);
-            const isClickOnToggle = mobileMenuToggle.contains(e.target);
-
-            if (!isClickInsideSidebar && !isClickOnToggle) {
-                body.classList.add('sidebar-collapsed');
-                mobileMenuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-            }
-        });
-
-        // Initialize on page load and window resize
-        window.addEventListener('resize', handleSidebarState);
-        handleSidebarState();
-
-        // Tab functionality - improved version
         $(document).ready(function () {
             // Initialize tabs - show first tab by default
             $('.admin_tab_content').hide().first().show();
@@ -856,13 +1179,19 @@ unset($_SESSION['error_message']);
             });
         });
 
-        function showModal(title, fieldLabel, type) {
-            $('#modalTitle').text(title);
-            $('#modalFieldLabel').text(fieldLabel);
-            $('#modalType').val(type);
-            $('#modalFieldInput').val('');
-            $('#adminModal').show();
-        }
+       function showModal(title, fieldLabel, type) {
+        $('#modalTitle').text(title);
+        $('#modalFieldLabel').text(fieldLabel);
+        $('#modalType').val(type);
+        $('#modalFieldInput').val('');
+        
+        // Center the modal vertically and horizontally
+        $('#adminModal').css({
+            'display': 'flex',
+            'justify-content': 'center',
+            'align-items': 'center'
+        }).show();
+    }
     </script>
 </body>
 

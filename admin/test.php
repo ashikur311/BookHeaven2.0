@@ -1,858 +1,838 @@
 <?php
 session_start();
-// Database connection
 require_once 'db.php';
 
-// Get all genres, categories, writers, and languages for dropdowns
-$genres = [];
-$categories = [];
-$writers = [];
-$languages = [];
-
-try {
-    $stmt = $pdo->query("SELECT * FROM genres");
-    $genres = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $stmt = $pdo->query("SELECT * FROM categories");
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $stmt = $pdo->query("SELECT * FROM writers");
-    $writers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $stmt = $pdo->query("SELECT * FROM languages WHERE status = 'active'");
-    $languages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    die("Error fetching data: " . $e->getMessage());
+// Check if admin is logged in
+if (!isset($_SESSION['admin_id'])) {
+    header("Location: authentication.php");
+    exit();
 }
+
+// Initialize variables
+$audiobooks = [];
+$error_message = '';
+$success_message = '';
+$edit_mode = false;
+$audiobook_to_edit = null;
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Determine which form was submitted
-    if (isset($_POST['add_book'])) {
-        handleBookSubmission();
-    } elseif (isset($_POST['add_audiobook'])) {
-        handleAudiobookSubmission();
-    } elseif (isset($_POST['add_subscription'])) {
-        handleSubscriptionSubmission();
-    } elseif (isset($_POST['add_event'])) {
-        handleEventSubmission();
-    }
-}
-
-function handleBookSubmission()
-{
-    global $pdo;
-
-    // Validate and sanitize input
-    $title = trim($_POST['title']);
-    $published = $_POST['published'];
-    $price = $_POST['price'] ?? 0;
-    $details = trim($_POST['details']);
-    $writer_id = $_POST['writer_id'];
-    $genre_id = $_POST['genre_id'];
-    $category_id = $_POST['category_id'];
-    $language_id = $_POST['language_id'];
-
-    // Handle file upload
-    $cover_image_url = '';
-    if (isset($_FILES['cover_image']) && $_FILES['cover_image']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../assets/book_covers/';
-
-        // Create directory if it doesn't exist
-        if (!file_exists($uploadDir)) {
-            if (!mkdir($uploadDir, 0755, true)) {
-                $_SESSION['error_message'] = "Failed to create upload directory";
-                header("Location: add.php");
-                exit();
+    if (isset($_POST['edit_audiobook'])) {
+        // Enter edit mode for a specific audiobook
+        $audiobook_id = $_POST['audiobook_id'];
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM audiobooks WHERE audiobook_id = ?");
+            $stmt->execute([$audiobook_id]);
+            $audiobook_to_edit = $stmt->fetch(PDO::FETCH_ASSOC);
+            $edit_mode = true;
+        } catch (PDOException $e) {
+            $error_message = "Error fetching audiobook: " . $e->getMessage();
+        }
+    } elseif (isset($_POST['update_audiobook'])) {
+        // Update audiobook information
+        $audiobook_id = $_POST['audiobook_id'];
+        $title = $_POST['title'] ?? '';
+        $writer = $_POST['writer'] ?? '';
+        $genre = $_POST['genre'] ?? '';
+        $category = $_POST['category'] ?? '';
+        $language = $_POST['language'] ?? '';
+        $description = $_POST['description'] ?? '';
+        $duration = $_POST['duration'] ?? '';
+        $status = $_POST['status'] ?? 'visible';
+        
+        try {
+            // Handle poster upload if a new image is provided
+            $poster_url = $_POST['current_poster'] ?? '';
+            if (isset($_FILES['poster']) && $_FILES['poster']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = 'assets/audiobook_covers/';
+                
+                // Create directory if it doesn't exist
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                
+                // Generate unique filename
+                $fileExt = pathinfo($_FILES['poster']['name'], PATHINFO_EXTENSION);
+                $filename = uniqid('audiobook_') . '.' . $fileExt;
+                $targetPath = $uploadDir . $filename;
+                
+                // Validate file type
+                $allowedTypes = ['jpg', 'jpeg', 'png', 'webp'];
+                if (!in_array(strtolower($fileExt), $allowedTypes)) {
+                    throw new Exception("Only JPG, JPEG, PNG, and WEBP files are allowed for posters.");
+                }
+                
+                // Move uploaded file
+                if (move_uploaded_file($_FILES['poster']['tmp_name'], $targetPath)) {
+                    // Delete old poster if it exists
+                    if ($poster_url && file_exists($poster_url)) {
+                        unlink($poster_url);
+                    }
+                    $poster_url = $targetPath;
+                } else {
+                    throw new Exception("Failed to upload poster image.");
+                }
             }
-        }
-
-        $fileExt = pathinfo($_FILES['cover_image']['name'], PATHINFO_EXTENSION);
-        $fileName = preg_replace('/[^a-zA-Z0-9]/', '_', $title) . '_' . time() . '.' . $fileExt;
-        $uploadPath = $uploadDir . $fileName;
-
-        if (move_uploaded_file($_FILES['cover_image']['tmp_name'], $uploadPath)) {
-            // Store relative path in database
-            $cover_image_url = 'assets/book_covers/' . $fileName;
-        } else {
-            $_SESSION['error_message'] = "Failed to upload cover image";
-            header("Location: add.php");
-            exit();
-        }
-    }
-
-    try {
-        // Insert book with price
-        $stmt = $pdo->prepare("INSERT INTO books (title, published, price, details, cover_image_url) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$title, $published, $price, $details, $cover_image_url]);
-        $book_id = $pdo->lastInsertId();
-
-        // Link writer
-        $stmt = $pdo->prepare("INSERT INTO book_writers (book_id, writer_id) VALUES (?, ?)");
-        $stmt->execute([$book_id, $writer_id]);
-
-        // Link genre
-        $stmt = $pdo->prepare("INSERT INTO book_genres (book_id, genre_id) VALUES (?, ?)");
-        $stmt->execute([$book_id, $genre_id]);
-
-        // Link category
-        $stmt = $pdo->prepare("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)");
-        $stmt->execute([$book_id, $category_id]);
-
-        // Link language
-        $stmt = $pdo->prepare("INSERT INTO book_languages (book_id, language_id) VALUES (?, ?)");
-        $stmt->execute([$book_id, $language_id]);
-
-        $_SESSION['success_message'] = "Book added successfully!";
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = "Error adding book: " . $e->getMessage();
-    }
-
-    header("Location: add.php");
-    exit();
-}
-
-function handleAudiobookSubmission()
-{
-    global $pdo;
-
-    // Validate and sanitize input
-    $title = trim($_POST['audio_title']);
-    $writer = trim($_POST['audio_writer']);
-    $genre = trim($_POST['audio_genre']);
-    $category = trim($_POST['audio_category']);
-    $language_id = $_POST['audio_language_id'];
-    $description = trim($_POST['audio_description']);
-    $duration = $_POST['audio_duration'];
-
-    // Get language name from ID
-    $language_name = '';
-    try {
-        $stmt = $pdo->prepare("SELECT name FROM languages WHERE language_id = ?");
-        $stmt->execute([$language_id]);
-        $language = $stmt->fetch(PDO::FETCH_ASSOC);
-        $language_name = $language['name'] ?? '';
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = "Error getting language: " . $e->getMessage();
-        header("Location: add.php#audiobook-tab");
-        exit();
-    }
-
-    // Handle file uploads
-    $audio_url = '';
-    $poster_url = '';
-
-    // Audio file upload
-    if (isset($_FILES['audio_file']) && $_FILES['audio_file']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../assets/audiobooks/';
-
-        if (!file_exists($uploadDir)) {
-            if (!mkdir($uploadDir, 0755, true)) {
-                $_SESSION['error_message'] = "Failed to create audio upload directory";
-                header("Location: add.php#audiobook-tab");
-                exit();
+            
+            // Handle audio file upload if a new file is provided
+            $audio_url = $_POST['current_audio'] ?? '';
+            if (isset($_FILES['audio']) && $_FILES['audio']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = 'assets/audiobooks/';
+                
+                // Create directory if it doesn't exist
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                
+                // Generate unique filename
+                $fileExt = pathinfo($_FILES['audio']['name'], PATHINFO_EXTENSION);
+                $filename = uniqid('audio_') . '.' . $fileExt;
+                $targetPath = $uploadDir . $filename;
+                
+                // Validate file type
+                $allowedTypes = ['mp3', 'm4a', 'wav', 'ogg'];
+                if (!in_array(strtolower($fileExt), $allowedTypes)) {
+                    throw new Exception("Only MP3, M4A, WAV, and OGG files are allowed for audio.");
+                }
+                
+                // Move uploaded file
+                if (move_uploaded_file($_FILES['audio']['tmp_name'], $targetPath)) {
+                    // Delete old audio file if it exists
+                    if ($audio_url && file_exists($audio_url)) {
+                        unlink($audio_url);
+                    }
+                    $audio_url = $targetPath;
+                } else {
+                    throw new Exception("Failed to upload audio file.");
+                }
             }
+            
+            // Update audiobook in database
+            $stmt = $pdo->prepare(
+                "UPDATE audiobooks SET 
+                    title = ?, 
+                    writer = ?, 
+                    genre = ?, 
+                    category = ?, 
+                    language = ?, 
+                    audio_url = ?,
+                    poster_url = ?,
+                    description = ?,
+                    duration = ?,
+                    status = ?,
+                    updated_at = NOW()
+                 WHERE audiobook_id = ?"
+            );
+            $stmt->execute([
+                $title,
+                $writer,
+                $genre,
+                $category,
+                $language,
+                $audio_url,
+                $poster_url,
+                $description,
+                $duration,
+                $status,
+                $audiobook_id
+            ]);
+            
+            $success_message = "Audiobook updated successfully!";
+            $edit_mode = false;
+            
+        } catch (Exception $e) {
+            $error_message = "Error updating audiobook: " . $e->getMessage();
         }
-
-        $fileExt = pathinfo($_FILES['audio_file']['name'], PATHINFO_EXTENSION);
-        $fileName = preg_replace('/[^a-zA-Z0-9]/', '_', $title) . '_' . time() . '.' . $fileExt;
-        $uploadPath = $uploadDir . $fileName;
-
-        if (move_uploaded_file($_FILES['audio_file']['tmp_name'], $uploadPath)) {
-            $audio_url = 'assets/audiobooks/' . $fileName;
-        } else {
-            $_SESSION['error_message'] = "Failed to upload audio file";
-            header("Location: add.php#audiobook-tab");
-            exit();
-        }
+    } elseif (isset($_POST['cancel_edit'])) {
+        // Cancel edit mode
+        $edit_mode = false;
     }
-
-    // Poster image upload
-    if (isset($_FILES['audio_poster']) && $_FILES['audio_poster']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../assets/audiobook_covers/';
-
-        if (!file_exists($uploadDir)) {
-            if (!mkdir($uploadDir, 0755, true)) {
-                $_SESSION['error_message'] = "Failed to create poster upload directory";
-                header("Location: add.php#audiobook-tab");
-                exit();
-            }
-        }
-
-        $fileExt = pathinfo($_FILES['audio_poster']['name'], PATHINFO_EXTENSION);
-        $fileName = preg_replace('/[^a-zA-Z0-9]/', '_', $title) . '_' . time() . '.' . $fileExt;
-        $uploadPath = $uploadDir . $fileName;
-
-        if (move_uploaded_file($_FILES['audio_poster']['tmp_name'], $uploadPath)) {
-            $poster_url = 'assets/audiobook_covers/' . $fileName;
-        } else {
-            $_SESSION['error_message'] = "Failed to upload poster image";
-            header("Location: add.php#audiobook-tab");
-            exit();
-        }
-    }
-
-    try {
-        // Insert audiobook with language name
-        $stmt = $pdo->prepare("INSERT INTO audiobooks (title, writer, genre, category, language, audio_url, poster_url, description, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$title, $writer, $genre, $category, $language_name, $audio_url, $poster_url, $description, $duration]);
-
-        $_SESSION['success_message'] = "Audiobook added successfully!";
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = "Error adding audiobook: " . $e->getMessage();
-    }
-
-    header("Location: add.php#audiobook-tab");
-    exit();
 }
 
-function handleSubscriptionSubmission()
-{
-    global $pdo;
-
-    // Validate and sanitize input
-    $plan_name = trim($_POST['plan_name']);
-    $price = $_POST['price'];
-    $validity_days = $_POST['validity_days'];
-    $book_quantity = $_POST['book_quantity'];
-    $audiobook_quantity = $_POST['audiobook_quantity'];
-    $description = trim($_POST['plan_description']);
-    $status = $_POST['status'];
-
-    try {
-        // Insert subscription plan
-        $stmt = $pdo->prepare("INSERT INTO subscription_plans (plan_name, price, validity_days, book_quantity, audiobook_quantity, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$plan_name, $price, $validity_days, $book_quantity, $audiobook_quantity, $description, $status]);
-
-        $_SESSION['success_message'] = "Subscription plan added successfully!";
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = "Error adding subscription plan: " . $e->getMessage();
-    }
-
-    header("Location: add.php#subscription-tab");
-    exit();
+// Fetch audiobooks data
+try {
+    $audiobooks = $pdo->query(
+        "SELECT 
+            audiobook_id,
+            title,
+            writer,
+            genre,
+            category,
+            language,
+            audio_url,
+            poster_url,
+            description,
+            duration,
+            status,
+            created_at
+         FROM audiobooks
+         ORDER BY created_at DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (PDOException $e) {
+    $error_message = "Error fetching audiobooks: " . $e->getMessage();
 }
 
-function handleEventSubmission()
-{
-    global $pdo;
-
-    // Validate and sanitize input
-    $name = trim($_POST['event_name']);
-    $venue = trim($_POST['event_venue']);
-    $event_date = $_POST['event_date'];
-    $description = trim($_POST['event_description']);
-    $status = $_POST['event_status'];
-
-    // Handle file upload
-    $banner_url = '';
-    if (isset($_FILES['event_banner']) && $_FILES['event_banner']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = 'assets/event_banners/';
-        $fileExt = pathinfo($_FILES['event_banner']['name'], PATHINFO_EXTENSION);
-        $fileName = preg_replace('/[^a-zA-Z0-9]/', '_', $name) . '_' . time() . '.' . $fileExt;
-        $uploadPath = $uploadDir . $fileName;
-
-        if (move_uploaded_file($_FILES['event_banner']['tmp_name'], $uploadPath)) {
-            $banner_url = $uploadPath;
-        }
-    }
-
-    try {
-        // Insert event
-        $stmt = $pdo->prepare("INSERT INTO events (name, venue, event_date, description, banner_url, status) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $venue, $event_date, $description, $banner_url, $status]);
-
-        $_SESSION['success_message'] = "Event added successfully!";
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = "Error adding event: " . $e->getMessage();
-    }
-
-    header("Location: add.php#event-tab");
-    exit();
-}
-
-// Display success/error messages
-$success_message = $_SESSION['success_message'] ?? '';
-$error_message = $_SESSION['error_message'] ?? '';
-unset($_SESSION['success_message']);
-unset($_SESSION['error_message']);
+$success_message = $success_message ?: ($_SESSION['success_message'] ?? '');
+$error_message = $error_message ?: ($_SESSION['error_message'] ?? '');
+unset($_SESSION['success_message'], $_SESSION['error_message']);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Add Content - Admin Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="/BKH/css/admin_add.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Audiobooks</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Base Styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      line-height: 1.6
+    }
+
+    body.admin-dark-mode {
+      background: #1a1a1a;
+      color: #f0f0f0
+    }
+
+    .admin_header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: #2c3e50;
+      color: #fff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1)
+    }
+
+    .admin-dark-mode .admin_header {
+      background: #1a1a1a;
+      border-bottom: 1px solid #333
+    }
+
+    .logo img {
+      height: 40px
+    }
+
+    .admin_header_right {
+      display: flex;
+      align-items: center;
+      gap: 1rem
+    }
+
+    .admin_theme_toggle {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer
+    }
+
+    .admin-dark-mode .admin_theme_toggle {
+      color: #f0f0f0
+    }
+
+    .admin_main {
+      display: flex;
+      min-height: calc(100vh - 70px)
+    }
+
+    .admin_sidebar {
+      width: 250px;
+      background: #34495e;
+      color: #fff
+    }
+
+    .admin-dark-mode .admin_sidebar {
+      background: #252525
+    }
+
+    .admin_sidebar_nav ul {
+      list-style: none;
+      padding: 1rem 0
+    }
+
+    .admin_sidebar_nav li a {
+      display: flex;
+      align-items: center;
+      padding: .8rem 1.5rem;
+      color: #fff;
+      text-decoration: none;
+      transition: background .3s
+    }
+
+    .admin_sidebar_nav li a:hover,
+    .admin_sidebar_nav li a.active {
+      background: rgba(255, 255, 255, .1)
+    }
+
+    .admin_sidebar_nav li a i {
+      margin-right: 10px;
+      width: 20px;
+      text-align: center
+    }
+
+    .admin_main_content {
+      flex: 1;
+      padding: 1.5rem;
+      background: #fff;
+      overflow-x: auto
+    }
+
+    .admin-dark-mode .admin_main_content {
+      background: #2d2d2d;
+      color: #f0f0f0
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem
+    }
+
+    .stat-card {
+      background: #fff;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .1);
+      text-align: center
+    }
+
+    .admin-dark-mode .stat-card {
+      background: #3d3d3d;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .3)
+    }
+
+    .stat-card h3 {
+      font-size: 1rem;
+      margin-bottom: .5rem;
+      color: #666
+    }
+
+    .admin-dark-mode .stat-card h3 {
+      color: #aaa
+    }
+
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #2c3e50
+    }
+
+    .admin-dark-mode .stat-card .stat-value {
+      color: #f0f0f0
+    }
+
+    /* Tables Section */
+    .section-title {
+      margin: 2rem 0 1rem;
+      color: #2c3e50;
+      font-size: 1.5rem;
+    }
+
+    .admin-dark-mode .section-title {
+      color: #f0f0f0;
+    }
+
+    .admin_table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0
+    }
+
+    .admin_table th,
+    .admin_table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #ddd
+    }
+
+    .admin-dark-mode .admin_table th,
+    .admin-dark-mode .admin_table td {
+      border-color: #444
+    }
+
+    .admin_table th {
+      background: #f5f5f5;
+      font-weight: bold
+    }
+
+    .admin-dark-mode .admin_table th {
+      background: #3d3d3d
+    }
+
+    .admin_table tr:hover {
+      background: #f9f9f9
+    }
+
+    .admin-dark-mode .admin_table tr:hover {
+      background: #3a3a3a
+    }
+
+    .cover-image {
+      width: 60px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .action-btn {
+      padding: .5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: .9rem;
+      transition: all .3s
+    }
+
+    .edit-btn {
+      background: #3498db;
+      color: #fff;
+      margin-right: .5rem
+    }
+
+    .edit-btn:hover {
+      background: #2980b9
+    }
+
+    .delete-btn {
+      background: #e74c3c;
+      color: #fff
+    }
+
+    .delete-btn:hover {
+      background: #c0392b
+    }
+
+    /* Edit Form Styles */
+    .edit-form-container {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .admin-dark-mode .edit-form-container {
+      background: #3d3d3d;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="time"],
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    .admin-dark-mode .form-group input[type="text"],
+    .admin-dark-mode .form-group input[type="time"],
+    .admin-dark-mode .form-group select,
+    .admin-dark-mode .form-group textarea {
+      background-color: #3d3d3d;
+      border-color: #444;
+      color: #f0f0f0;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .file-upload {
+      margin-top: 1rem;
+    }
+
+    .file-upload-preview {
+      margin-top: 1rem;
+      max-width: 200px;
+      border: 1px solid #ddd;
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .admin-dark-mode .file-upload-preview {
+      border-color: #444;
+    }
+
+    .file-upload-preview img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .audio-preview {
+      margin-top: 1rem;
+    }
+
+    .audio-preview audio {
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background-color: #3498db;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #2980b9;
+    }
+
+    .btn-secondary {
+      background-color: #95a5a6;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background-color: #7f8c8d;
+    }
+
+    .alert {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+    }
+
+    .alert-error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .alert-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .admin-dark-mode .alert-error {
+      background-color: #3a1a1d;
+      color: #ffb8c6;
+      border-color: #4d2227;
+    }
+
+    .admin-dark-mode .alert-success {
+      background-color: #1a3a24;
+      color: #a3ffc2;
+      border-color: #224d2e;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .admin_main {
+        flex-direction: column;
+      }
+      
+      .admin_sidebar {
+        width: 100%;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .admin_table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .admin_header_right {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+      }
+      
+      .action-btn {
+        padding: .3rem .6rem;
+        font-size: .8rem;
+      }
+      
+      .form-actions {
+        flex-direction: column;
+      }
+      
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 
 <body>
-    <div class="mobile-menu-toggle" id="mobileMenuToggle">
-        <i class="fas fa-bars"></i>
+  <header class="admin_header">
+    <div class="logo"><img src="images/logo.png" alt="Logo"></div>
+    <div class="admin_header_right">
+      <h1>Admin Dashboard</h1>
+      <p>Welcome, Admin</p>
+      <button class="admin_theme_toggle" id="themeToggle"><i class="fas fa-moon"></i></button>
     </div>
-    <header>
-        <nav class="admin_header">
-            <div class="logo">
-                <img src="images/logo.png" alt="Logo">
-            </div>
-            <div class="admin_header_right">
-                <h1>Admin Dashboard</h1>
-                <p>Welcome, Admin</p>
-                <button class="admin_theme_toggle" id="themeToggle">
-                    <i class="fas fa-moon"></i>
-                </button>
-            </div>
-        </nav>
-    </header>
-    <main class="admin_main">
-        <aside class="admin_sidebar">
-            <nav class="admin_sidebar_nav">
-                <ul>
-                    <li><a href="index.php"><i class="fas fa-fw fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
-                    <li><a href="add.php" class="active"><i class="fas fa-fw fa-plus-circle"></i> <span>Add</span></a>
-                    </li>
-                    <li><a href="Users.php"><i class="fas fa-fw fa-users"></i> <span>Users</span></a></li>
-                    <li><a href="partners.php"><i class="fas fa-fw fa-handshake"></i> <span>Partners</span></a></li>
-                    <li><a href="books.php"><i class="fas fa-fw fa-book"></i> <span>Books</span></a></li>
-                    <li><a href="rentbooks.php"><i class="fas fa-fw fa-book-open"></i> <span>Rent Books</span></a></li>
-                    <li><a href="audiobook.php"><i class="fas fa-fw fa-headphones"></i> <span>Audio Books</span></a>
-                    </li>
-                    <li><a href="orders.php"><i class="fas fa-fw fa-shopping-cart"></i> <span>Orders</span></a></li>
-                    <li><a href="subscription.php"><i class="fas fa-fw fa-star"></i> <span>Subscription</span></a></li>
-                    <li><a href="events.php"><i class="fas fa-fw fa-calendar-alt"></i> <span>Events</span></a></li>
-                    <li><a href="reports.php"><i class="fas fa-fw fa-chart-bar"></i> <span>Reports</span></a></li>
-                    <li><a href="logout.php"><i class="fas fa-fw fa-sign-out-alt"></i> <span>Logout</span></a></li>
-                </ul>
-            </nav>
-        </aside>
-        <div class="admin_main_content">
-            <!-- Display success/error messages -->
-            <?php if ($success_message): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
-            <?php endif; ?>
-
-            <?php if ($error_message): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
-            <?php endif; ?>
-
-            <div class="admin_tabs">
-                <div class="admin_tab active" data-tab="book">Book</div>
-                <div class="admin_tab" data-tab="audiobook">Audio Book</div>
-                <div class="admin_tab" data-tab="subscription">Subscription</div>
-                <div class="admin_tab" data-tab="event">Event</div>
-            </div>
-
-            <!-- Book Tab Content -->
-            <div class="admin_tab_content active" id="book-tab">
-                <h2>Add New Book</h2>
-                <form action="add.php" method="POST" enctype="multipart/form-data">
-                    <div class="admin_form_group">
-                        <label for="title">Book Title</label>
-                        <input type="text" id="title" name="title" class="admin_form_control" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="published">Published Date</label>
-                        <input type="date" inputmode="none" id="published" name="published" class="admin_form_control"
-                            required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="price">Price</label>
-                        <input type="number" inputmode="numeric" pattern="[0-9]*" id="price" name="price"
-                            class="admin_form_control" min="0" step="0.01">
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="writer_id">Writer</label>
-                        <select id="writer_id" name="writer_id" class="admin_form_control admin_select2" required>
-                            <option value="">Select Writer</option>
-                            <?php foreach ($writers as $writer): ?>
-                                <option value="<?= $writer['writer_id'] ?>"><?= htmlspecialchars($writer['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small>Can't find the writer? <a href="#" id="addNewWriter">Add New Writer</a></small>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="genre_id">Genre</label>
-                        <select id="genre_id" name="genre_id" class="admin_form_control admin_select2" required>
-                            <option value="">Select Genre</option>
-                            <?php foreach ($genres as $genre): ?>
-                                <option value="<?= $genre['genre_id'] ?>"><?= htmlspecialchars($genre['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small>Can't find the genre? <a href="#" id="addNewGenre">Add New Genre</a></small>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="category_id">Category</label>
-                        <select id="category_id" name="category_id" class="admin_form_control admin_select2" required>
-                            <option value="">Select Category</option>
-                            <?php foreach ($categories as $category): ?>
-                                <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small>Can't find the category? <a href="#" id="addNewCategory">Add New Category</a></small>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="language_id">Language</label>
-                        <select id="language_id" name="language_id" class="admin_form_control admin_select2" required>
-                            <option value="">Select Language</option>
-                            <?php foreach ($languages as $language): ?>
-                                <option value="<?= $language['language_id'] ?>"><?= htmlspecialchars($language['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small>Can't find the language? <a href="#" id="addNewLanguage">Add New Language</a></small>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="details">Book Details</label>
-                        <textarea id="details" name="details" class="admin_form_control" rows="5"></textarea>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="cover_image">Cover Image</label>
-                        <input type="file" id="cover_image" name="cover_image" class="admin_form_control"
-                            accept="image/*">
-                        <small>Image will be saved in assets/bookcover/ with the book title as filename</small>
-                    </div>
-
-                    <button type="submit" name="add_book" class="admin_btn">Add Book</button>
-                </form>
-            </div>
-
-            <!-- Audio Book Tab Content -->
-            <div class="admin_tab_content" id="audiobook-tab">
-                <h2>Add New Audio Book</h2>
-                <form action="add.php" method="POST" enctype="multipart/form-data">
-                    <div class="admin_form_group">
-                        <label for="audio_title">Title</label>
-                        <input type="text" id="audio_title" name="audio_title" class="admin_form_control" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_writer">Writer</label>
-                        <input type="text" id="audio_writer" name="audio_writer" class="admin_form_control" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_genre">Genre</label>
-                        <input type="text" id="audio_genre" name="audio_genre" class="admin_form_control" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_category">Category</label>
-                        <input type="text" id="audio_category" name="audio_category" class="admin_form_control"
-                            required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_language_id">Language</label>
-                        <select id="audio_language_id" name="audio_language_id" class="admin_form_control admin_select2"
-                            required>
-                            <option value="">Select Language</option>
-                            <?php foreach ($languages as $language): ?>
-                                <option value="<?= $language['language_id'] ?>"><?= htmlspecialchars($language['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small>Can't find the language? <a href="#" id="addNewLanguage">Add New Language</a></small>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_description">Description</label>
-                        <textarea id="audio_description" name="audio_description" class="admin_form_control"
-                            rows="5"></textarea>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_duration">Duration (HH:MM:SS)</label>
-                        <input type="text" id="audio_duration" name="audio_duration" class="admin_form_control"
-                            placeholder="00:45:30" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_file">Audio File</label>
-                        <input type="file" id="audio_file" name="audio_file" class="admin_form_control" accept="audio/*"
-                            required>
-                        <small>Supported formats: MP3, WAV, AAC</small>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audio_poster">Poster Image</label>
-                        <input type="file" id="audio_poster" name="audio_poster" class="admin_form_control"
-                            accept="image/*">
-                        <small>Optional cover image for the audiobook</small>
-                    </div>
-
-                    <button type="submit" name="add_audiobook" class="admin_btn">Add Audio Book</button>
-                </form>
-            </div>
-
-            <!-- Subscription Tab Content -->
-            <div class="admin_tab_content" id="subscription-tab">
-                <h2>Add New Subscription Plan</h2>
-                <form action="add.php" method="POST">
-                    <div class="admin_form_group">
-                        <label for="plan_name">Plan Name</label>
-                        <input type="text" id="plan_name" name="plan_name" class="admin_form_control" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="price">Price</label>
-                        <input type="number" id="price" name="price" class="admin_form_control" min="0" step="0.01"
-                            required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="validity_days">Validity (Days)</label>
-                        <input type="number" id="validity_days" name="validity_days" class="admin_form_control" min="1"
-                            required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="book_quantity">Number of Books Allowed</label>
-                        <input type="number" id="book_quantity" name="book_quantity" class="admin_form_control" min="0"
-                            required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="audiobook_quantity">Number of Audiobooks Allowed</label>
-                        <input type="number" id="audiobook_quantity" name="audiobook_quantity"
-                            class="admin_form_control" min="0" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="plan_description">Description</label>
-                        <textarea id="plan_description" name="plan_description" class="admin_form_control"
-                            rows="5"></textarea>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="status">Status</label>
-                        <select id="status" name="status" class="admin_form_control" required>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" name="add_subscription" class="admin_btn">Add Subscription Plan</button>
-                </form>
-            </div>
-
-            <!-- Event Tab Content -->
-            <div class="admin_tab_content" id="event-tab">
-                <h2>Add New Event</h2>
-                <form action="add.php" method="POST" enctype="multipart/form-data">
-                    <div class="admin_form_group">
-                        <label for="event_name">Event Name</label>
-                        <input type="text" id="event_name" name="event_name" class="admin_form_control" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="event_venue">Venue</label>
-                        <input type="text" id="event_venue" name="event_venue" class="admin_form_control" required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="event_date">Event Date & Time</label>
-                        <input type="datetime-local" id="event_date" name="event_date" class="admin_form_control"
-                            required>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="event_description">Description</label>
-                        <textarea id="event_description" name="event_description" class="admin_form_control"
-                            rows="5"></textarea>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="event_banner">Banner Image</label>
-                        <input type="file" id="event_banner" name="event_banner" class="admin_form_control"
-                            accept="image/*">
-                        <small>Optional banner image for the event</small>
-                    </div>
-
-                    <div class="admin_form_group">
-                        <label for="event_status">Status</label>
-                        <select id="event_status" name="event_status" class="admin_form_control" required>
-                            <option value="upcoming">Upcoming</option>
-                            <option value="ongoing">Ongoing</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" name="add_event" class="admin_btn">Add Event</button>
-                </form>
-            </div>
+  </header>
+  <main class="admin_main">
+    <aside class="admin_sidebar">
+      <nav class="admin_sidebar_nav">
+        <ul>
+          <li><a href="admin_dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+          <li><a href="add.php"><i class="fas fa-plus-circle"></i> Add</a></li>
+          <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+          <li><a href="partners.php"><i class="fas fa-handshake"></i> Partners</a></li>
+          <li><a href="books.php"><i class="fas fa-book"></i> Books</a></li>
+          <li><a href="audiobooks.php" class="active"><i class="fas fa-headphones"></i> Audiobooks</a></li>
+          <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+          <li><a href="subscription.php"><i class="fas fa-star"></i> Subscription</a></li>
+          <li><a href="events.php"><i class="fas fa-calendar-alt"></i> Events</a></li>
+          <li><a href="writers.php"><i class="fas fa-pen-fancy"></i> Writers</a></li>
+          <li><a href="reports.php"><i class="fas fa-chart-bar"></i> Reports</a></li>
+          <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+      </nav>
+    </aside>
+    <div class="admin_main_content">
+      <?php if ($error_message): ?>
+        <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
+      <?php endif; ?>
+      <?php if ($success_message): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
+      <?php endif; ?>
+      
+      <h1>Audiobooks Management</h1>
+      
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Total Audiobooks</h3>
+          <div class="stat-value"><?= count($audiobooks) ?></div>
         </div>
-    </main>
-
-    <!-- Modal for adding new items -->
-    <div id="adminModal" class="admin_modal">
-        <div class="admin_modal_content">
-            <span class="admin_modal_close">&times;</span>
-            <h3 id="modalTitle">Add New Item</h3>
-            <form id="modalForm">
-                <div class="admin_form_group">
-                    <label id="modalFieldLabel">Name</label>
-                    <input type="text" id="modalFieldInput" class="admin_form_control" required>
-                    <input type="hidden" id="modalType" value="">
+        <div class="stat-card">
+          <h3>Visible</h3>
+          <div class="stat-value">
+            <?= count(array_filter($audiobooks, function($ab) { return $ab['status'] === 'visible'; })) ?>
+          </div>
+        </div>
+        <div class="stat-card">
+          <h3>Hidden</h3>
+          <div class="stat-value">
+            <?= count(array_filter($audiobooks, function($ab) { return $ab['status'] === 'hidden'; })) ?>
+          </div>
+        </div>
+        <div class="stat-card">
+          <h3>Pending</h3>
+          <div class="stat-value">
+            <?= count(array_filter($audiobooks, function($ab) { return $ab['status'] === 'pending'; })) ?>
+          </div>
+        </div>
+      </div>
+      
+      <?php if ($edit_mode && $audiobook_to_edit): ?>
+        <!-- Edit Form -->
+        <div class="edit-form-container">
+          <h2>Edit Audiobook: <?= htmlspecialchars($audiobook_to_edit['title']) ?></h2>
+          
+          <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="audiobook_id" value="<?= $audiobook_to_edit['audiobook_id'] ?>">
+            <input type="hidden" name="current_poster" value="<?= $audiobook_to_edit['poster_url'] ?>">
+            <input type="hidden" name="current_audio" value="<?= $audiobook_to_edit['audio_url'] ?>">
+            
+            <div class="form-group">
+              <label for="title">Title</label>
+              <input type="text" id="title" name="title" value="<?= htmlspecialchars($audiobook_to_edit['title']) ?>" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="writer">Writer</label>
+              <input type="text" id="writer" name="writer" value="<?= htmlspecialchars($audiobook_to_edit['writer']) ?>" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="genre">Genre</label>
+              <input type="text" id="genre" name="genre" value="<?= htmlspecialchars($audiobook_to_edit['genre']) ?>" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="category">Category</label>
+              <input type="text" id="category" name="category" value="<?= htmlspecialchars($audiobook_to_edit['category']) ?>" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="language">Language</label>
+              <input type="text" id="language" name="language" value="<?= htmlspecialchars($audiobook_to_edit['language']) ?>">
+            </div>
+            
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea id="description" name="description"><?= htmlspecialchars($audiobook_to_edit['description']) ?></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="duration">Duration (HH:MM:SS)</label>
+              <input type="time" id="duration" name="duration" step="1" value="<?= $audiobook_to_edit['duration'] ?>">
+            </div>
+            
+            <div class="form-group">
+              <label for="status">Status</label>
+              <select id="status" name="status" required>
+                <option value="visible" <?= $audiobook_to_edit['status'] === 'visible' ? 'selected' : '' ?>>Visible</option>
+                <option value="hidden" <?= $audiobook_to_edit['status'] === 'hidden' ? 'selected' : '' ?>>Hidden</option>
+                <option value="pending" <?= $audiobook_to_edit['status'] === 'pending' ? 'selected' : '' ?>>Pending</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Current Poster</label>
+              <?php if ($audiobook_to_edit['poster_url']): ?>
+                <div class="file-upload-preview">
+                  <img src="/BookHeaven2.0/<?= htmlspecialchars($audiobook_to_edit['poster_url']) ?>" alt="Current Audiobook Poster">
                 </div>
-                <button type="submit" class="admin_btn">Add</button>
-            </form>
+              <?php else: ?>
+                <p>No poster uploaded</p>
+              <?php endif; ?>
+            </div>
+            
+            <div class="form-group">
+              <label for="poster">Update Poster (optional)</label>
+              <input type="file" id="poster" name="poster" class="file-upload" accept="image/*">
+              <small>Allowed formats: JPG, JPEG, PNG, WEBP</small>
+            </div>
+            
+            <div class="form-group">
+              <label>Current Audio File</label>
+              <?php if ($audiobook_to_edit['audio_url']): ?>
+                <div class="audio-preview">
+                  <audio controls>
+                    <source src="/BookHeaven2.0/<?= htmlspecialchars($audiobook_to_edit['audio_url']) ?>" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              <?php else: ?>
+                <p>No audio file uploaded</p>
+              <?php endif; ?>
+            </div>
+            
+            <div class="form-group">
+              <label for="audio">Update Audio File (optional)</label>
+              <input type="file" id="audio" name="audio" class="file-upload" accept="audio/*">
+              <small>Allowed formats: MP3, M4A, WAV, OGG</small>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" name="update_audiobook" class="btn btn-primary">Save Changes</button>
+              <button type="submit" name="cancel_edit" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
         </div>
+      <?php endif; ?>
+      
+      <!-- Audiobooks Table -->
+      <h2 class="section-title">Audiobooks List</h2>
+      <table class="admin_table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Poster</th>
+            <th>Title</th>
+            <th>Writer</th>
+            <th>Genre</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($audiobooks as $audiobook): ?>
+            <tr>
+              <td>#<?= $audiobook['audiobook_id'] ?></td>
+              <td>
+                <img src="/BookHeaven2.0/<?= $audiobook['poster_url'] ? htmlspecialchars($audiobook['poster_url']) : 'https://via.placeholder.com/60x80?text=No+Poster' ?>" 
+                     alt="<?= htmlspecialchars($audiobook['title']) ?>" class="cover-image">
+              </td>
+              <td><?= htmlspecialchars($audiobook['title']) ?></td>
+              <td><?= htmlspecialchars($audiobook['writer']) ?></td>
+              <td><?= htmlspecialchars($audiobook['genre']) ?></td>
+              <td><?= ucfirst($audiobook['status']) ?></td>
+              <td>
+                <form method="POST" class="action-form">
+                  <input type="hidden" name="audiobook_id" value="<?= $audiobook['audiobook_id'] ?>">
+                  <button type="submit" name="edit_audiobook" class="action-btn edit-btn">Edit</button>
+                </form>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
     </div>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
+  </main>
+  
+  <script>
     // Theme toggle functionality
     const themeToggle = document.getElementById('themeToggle');
     const icon = themeToggle.querySelector('i');
 
-    // Check for saved theme preference or use preferred color scheme
-    const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
-    const currentTheme = localStorage.getItem('admin-theme');
+    // Check for saved theme preference or use system preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (localStorage.getItem('admin-theme') === 'dark' || (!localStorage.getItem('admin-theme') && prefersDark)) {
+      document.body.classList.add('admin-dark-mode');
+      icon.classList.replace('fa-moon', 'fa-sun');
+    }
 
-    if (currentTheme === 'dark' || (!currentTheme && prefersDarkScheme.matches)) {
-        document.body.classList.add('admin-dark-mode');
+    // Toggle theme on button click
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('admin-dark-mode');
+      if (document.body.classList.contains('admin-dark-mode')) {
+        localStorage.setItem('admin-theme', 'dark');
         icon.classList.replace('fa-moon', 'fa-sun');
-    }
-
-    themeToggle.addEventListener('click', function() {
-        document.body.classList.toggle('admin-dark-mode');
-
-        if (document.body.classList.contains('admin-dark-mode')) {
-            localStorage.setItem('admin-theme', 'dark');
-            icon.classList.replace('fa-moon', 'fa-sun');
-        } else {
-            localStorage.setItem('admin-theme', 'light');
-            icon.classList.replace('fa-sun', 'fa-moon');
-        }
-
-        // Update Select2 theme
-        $('.admin_select2').select2({
-            theme: document.body.classList.contains('admin-dark-mode') ? 'dark' : 'default',
-            dropdownParent: $('.admin_main_content'),
-            width: '100%',
-            dropdownAutoWidth: true
-        });
+      } else {
+        localStorage.setItem('admin-theme', 'light');
+        icon.classList.replace('fa-sun', 'fa-moon');
+      }
     });
-
-    // Mobile menu toggle functionality
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const sidebar = document.querySelector('.admin_sidebar');
-    const body = document.body;
-
-    // Responsive sidebar state management
-    function handleSidebarState() {
-        if (window.innerWidth <= 992) {
-            body.classList.add('sidebar-collapsed');
-            mobileMenuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-        } else {
-            body.classList.remove('sidebar-collapsed');
-        }
-    }
-
-    mobileMenuToggle.addEventListener('click', function() {
-        body.classList.toggle('sidebar-collapsed');
-        
-        // Change icon based on state
-        const icon = this.querySelector('i');
-        if (body.classList.contains('sidebar-collapsed')) {
-            icon.classList.replace('fa-bars', 'fa-times');
-        } else {
-            icon.classList.replace('fa-times', 'fa-bars');
-        }
-    });
-
-    // Close sidebar when clicking on a link (for mobile)
-    document.querySelectorAll('.admin_sidebar_nav a').forEach(link => {
-        link.addEventListener('click', function() {
-            if (window.innerWidth <= 992) {
-                body.classList.add('sidebar-collapsed');
-                mobileMenuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-            }
-        });
-    });
-
-    // Close sidebar when clicking outside (for mobile)
-    document.addEventListener('click', function(e) {
-        if (window.innerWidth > 992) return;
-        
-        const isClickInsideSidebar = sidebar.contains(e.target);
-        const isClickOnToggle = mobileMenuToggle.contains(e.target);
-        
-        if (!isClickInsideSidebar && !isClickOnToggle) {
-            body.classList.add('sidebar-collapsed');
-            mobileMenuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-        }
-    });
-
-    // Initialize on page load and window resize
-    window.addEventListener('resize', handleSidebarState);
-    handleSidebarState();
-
-    // Tab functionality - improved version
-    $(document).ready(function() {
-        // Initialize tabs - show first tab by default
-        $('.admin_tab_content').hide().first().show();
-        $('.admin_tab').first().addClass('active');
-
-        // Tab click handler
-        $('.admin_tab').click(function(e) {
-            e.preventDefault();
-            
-            // Remove active class from all tabs
-            $('.admin_tab').removeClass('active');
-            
-            // Add active class to clicked tab
-            $(this).addClass('active');
-            
-            // Hide all tab contents
-            $('.admin_tab_content').hide();
-            
-            // Show the corresponding tab content
-            const tabId = $(this).data('tab') + '-tab';
-            $('#' + tabId).show();
-            
-            // Reinitialize Select2 in the active tab if needed
-            $('#' + tabId).find('.admin_select2').select2({
-                theme: document.body.classList.contains('admin-dark-mode') ? 'dark' : 'default',
-                dropdownParent: $('.admin_main_content'),
-                width: '100%',
-                dropdownAutoWidth: true
-            });
-        });
-
-        // Initialize Select2 with proper dropdown positioning
-        $('.admin_select2').select2({
-            theme: document.body.classList.contains('admin-dark-mode') ? 'dark' : 'default',
-            dropdownParent: $('.admin_main_content'),
-            width: '100%',
-            dropdownAutoWidth: true
-        });
-
-        // Add new writer modal
-        $('#addNewWriter').click(function(e) {
-            e.preventDefault();
-            showModal('Add New Writer', 'Writer Name', 'writer');
-        });
-
-        // Add new genre modal
-        $('#addNewGenre').click(function(e) {
-            e.preventDefault();
-            showModal('Add New Genre', 'Genre Name', 'genre');
-        });
-
-        // Add new category modal
-        $('#addNewCategory').click(function(e) {
-            e.preventDefault();
-            showModal('Add New Category', 'Category Name', 'category');
-        });
-
-        // Add new language modal
-        $('#addNewLanguage').click(function(e) {
-            e.preventDefault();
-            showModal('Add New Language', 'Language Name', 'language');
-        });
-
-        // Close modal when clicking the X button
-        $('.admin_modal_close').click(function() {
-            $('#adminModal').hide();
-        });
-
-        // Close modal when clicking outside
-        $(window).click(function(e) {
-            if (e.target == document.getElementById('adminModal')) {
-                $('#adminModal').hide();
-            }
-        });
-
-        // Handle modal form submission
-        $('#modalForm').submit(function(e) {
-            e.preventDefault();
-            const type = $('#modalType').val();
-            const value = $('#modalFieldInput').val();
-
-            if (!value.trim()) {
-                alert('Please enter a valid name');
-                return;
-            }
-
-            // AJAX call to add new item
-            $.ajax({
-                url: 'add_item.php',
-                method: 'POST',
-                data: {
-                    type: type,
-                    name: value,
-                    status: type === 'language' ? 'active' : null
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        let selectId, selectElement;
-
-                        switch (type) {
-                            case 'writer':
-                                selectId = 'writer_id';
-                                break;
-                            case 'genre':
-                                selectId = 'genre_id';
-                                break;
-                            case 'category':
-                                selectId = 'category_id';
-                                break;
-                            case 'language':
-                                // Update both language selects
-                                ['language_id', 'audio_language_id'].forEach(id => {
-                                    selectElement = $('#' + id);
-                                    const newOption = new Option(value, response.id, true, true);
-                                    selectElement.append(newOption).trigger('change');
-                                });
-                                break;
-                            default:
-                                selectId = '';
-                        }
-
-                        if (selectId && type !== 'language') {
-                            selectElement = $('#' + selectId);
-                            const newOption = new Option(value, response.id, true, true);
-                            selectElement.append(newOption).trigger('change');
-                        }
-
-                        // Close modal
-                        $('#adminModal').hide();
-                    } else {
-                        alert('Error: ' + response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    alert('Error adding item: ' + error);
-                }
-            });
-        });
-    });
-
-    function showModal(title, fieldLabel, type) {
-        $('#modalTitle').text(title);
-        $('#modalFieldLabel').text(fieldLabel);
-        $('#modalType').val(type);
-        $('#modalFieldInput').val('');
-        $('#adminModal').show();
-    }
-</script>
+  </script>
 </body>
 
 </html>

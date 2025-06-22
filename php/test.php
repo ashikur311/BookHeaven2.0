@@ -1,246 +1,106 @@
 <?php
+// Include your database connection file
+// i // Adjust this to your actual connection file
 include_once("../db_connection.php");
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+// Function to generate random dates
+function randomDate($startDate, $endDate) {
+    $min = strtotime($startDate);
+    $max = strtotime($endDate);
+    $val = rand($min, $max);
+    return date('Y-m-d', $val);
 }
 
-// Redirect if not logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: authentication.php");
-    exit();
+// Function to generate random invoice numbers
+function generateInvoiceNumber() {
+    return 'INV-' . date('Ymd') . '-' . strtoupper(substr(md5(microtime()), 0, 6));
 }
 
-$user_id = $_SESSION['user_id'];
+// Array of sample first names
+$firstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Daniel', 
+              'Emma', 'Olivia', 'Ava', 'Isabella', 'Sophia', 'Charlotte', 'Mia', 'Amelia', 'Harper', 'Evelyn'];
 
-// Verify the user exists
-$user_check = $conn->prepare("SELECT user_id FROM users WHERE user_id = ?");
-$user_check->bind_param('i', $user_id);
-$user_check->execute();
-$user_check->store_result();
+// Array of sample last names
+$lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
+             'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
 
-if ($user_check->num_rows === 0) {
-    // User doesn't exist in database
-    session_destroy();
-    header("Location: authentication.php");
-    exit();
-}
+// Array of sample street names
+$streets = ['Main St', 'Oak Ave', 'Pine Rd', 'Maple Dr', 'Elm St', 'Cedar Ln', 'Birch Way', 'Willow Blvd', 'Spruce Ct', 'Magnolia Ave'];
 
-// Get joined events for the user
-$joined_events_query = "SELECT e.* 
-                        FROM events e
-                        JOIN event_participants ep ON e.event_id = ep.event_id
-                        WHERE ep.user_id = ? AND ep.status = 'registered'";
+// Array of sample cities
+$cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'];
 
-$stmt = $conn->prepare($joined_events_query);
-$stmt->bind_param('i', $user_id);
-$stmt->execute();
-$joined_events_result = $stmt->get_result();
-
-// Get upcoming events
-$upcoming_events_query = "SELECT e.*, 
-                         (SELECT 1 FROM event_participants ep 
-                          WHERE ep.event_id = e.event_id AND ep.user_id = ?) AS is_joined
-                         FROM events e 
-                         WHERE e.event_date > NOW() AND e.status = 'upcoming'
-                         ORDER BY e.event_date";
-$stmt = $conn->prepare($upcoming_events_query);
-$stmt->bind_param('i', $user_id);
-$stmt->execute();
-$upcoming_events_result = $stmt->get_result();
-
-$events_data = [
-    'joinedEvents' => $joined_events_result->fetch_all(MYSQLI_ASSOC),
-    'upcomingEvents' => $upcoming_events_result->fetch_all(MYSQLI_ASSOC)
+// Plan details - assuming these amounts for demonstration
+$plans = [
+    1 => ['amount' => 9.99, 'duration' => '+1 month'],
+    2 => ['amount' => 24.99, 'duration' => '+3 months'],
+    3 => ['amount' => 89.99, 'duration' => '+1 year']
 ];
 
-// Handle the join/leave action via POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'], $_POST['action'])) {
-    // Verify CSRF token if you have one
+// Generate and insert 50 users
+for ($i = 1; $i <= 50; $i++) {
+    // Generate random user data
+    $firstName = $firstNames[array_rand($firstNames)];
+    $lastName = $lastNames[array_rand($lastNames)];
+    $username = strtolower($firstName[0] . $lastName . rand(1, 99));
+    $email = strtolower($firstName . '.' . $lastName . rand(1, 99) . '@example.com');
+    $password = 'password' . $i; // Simple password for testing
+    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
     
-    $event_id = (int)$_POST['event_id'];
-    $action = $_POST['action']; // join or leave
-
-    // Verify event exists
-    $event_check = $conn->prepare("SELECT event_id FROM events WHERE event_id = ?");
-    $event_check->bind_param('i', $event_id);
-    $event_check->execute();
-    $event_check->store_result();
-
-    if ($event_check->num_rows === 0) {
-        die("Invalid event ID");
-    }
-
-    if ($action === 'join') {
-        // Check if the user is already registered
-        $check_query = "SELECT * FROM event_participants WHERE user_id = ? AND event_id = ?";
-        $stmt = $conn->prepare($check_query);
-        $stmt->bind_param('ii', $user_id, $event_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows === 0) {
-            // User is not registered for the event, so join
-            $join_query = "INSERT INTO event_participants (user_id, event_id, status) VALUES (?, ?, 'registered')";
-            $stmt = $conn->prepare($join_query);
-            $stmt->bind_param('ii', $user_id, $event_id);
-            if ($stmt->execute()) {
-                header('Location: ' . $_SERVER['PHP_SELF']);
-                exit;
-            } else {
-                die("Error joining event: " . $conn->error);
-            }
+    // Generate address
+    $streetNum = rand(100, 9999);
+    $street = $streets[array_rand($streets)];
+    $city = $cities[array_rand($cities)];
+    $state = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 2);
+    $zip = rand(10000, 99999);
+    $address = "$streetNum $street, $city, $state $zip";
+    
+    // Generate date of birth (between 18 and 80 years ago)
+    $dob = randomDate('-80 years', '-18 years');
+    
+    // Generate phone number
+    $contact = rand(200, 999) . '-' . rand(200, 999) . '-' . rand(1000, 9999);
+    
+    try {
+        // Check if email exists (unlikely with our generation but good practice)
+        $checkEmail = $conn->query("SELECT * FROM users WHERE email = '$email'");
+        if ($checkEmail->num_rows > 0) {
+            continue; // Skip if email exists (shouldn't happen with our generation)
         }
-    } elseif ($action === 'leave') {
-        // Remove user from event participation
-        $leave_query = "DELETE FROM event_participants WHERE user_id = ? AND event_id = ?";
-        $stmt = $conn->prepare($leave_query);
-        $stmt->bind_param('ii', $user_id, $event_id);
-        if ($stmt->execute()) {
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            exit;
-        } else {
-            die("Error leaving event: " . $conn->error);
-        }
+        
+        // Insert into users table
+        $conn->query("INSERT INTO users (username, email, pass) VALUES ('$username', '$email', '$hashedPassword')");
+        $user_id = $conn->insert_id;
+        
+        // Insert into user_info table
+        $conn->query("INSERT INTO user_info (user_id, birthday, phone, address) VALUES ($user_id, '$dob', '$contact', '$address')");
+        
+        // Now create a subscription order for this user
+        $plan_id = rand(1, 3); // Randomly select plan 1, 2, or 3
+        $plan = $plans[$plan_id];
+        $amount = $plan['amount'];
+        $invoice_number = generateInvoiceNumber();
+        $issue_date = date('Y-m-d');
+        $expire_date = date('Y-m-d', strtotime($plan['duration']));
+        
+        // Random payment status (80% paid, 20% unpaid)
+        $payment_status = (rand(1, 100) <= 80 ? 'paid' : 'unpaid');
+        
+        // Random payment method if paid
+        $payment_method = $payment_status == 'paid' ? 
+            ['credit_card', 'paypal', 'bank_transfer'][rand(0, 2)] : NULL;
+        
+        // Insert subscription order
+        $conn->query("INSERT INTO subscription_orders 
+                     (user_id, plan_id, amount, invoice_number, status, payment_status, issue_date, expire_date, payment_method) 
+                     VALUES 
+                     ($user_id, $plan_id, $amount, '$invoice_number', 'active', '$payment_status', '$issue_date', '$expire_date', " . 
+                     ($payment_method ? "'$payment_method'" : "NULL") . ")");
+        
+        echo "User $i created: $username ($email) with plan $plan_id<br>";
+    } catch (Exception $e) {
+        echo "Error creating user $i: " . $e->getMessage() . "<br>";
     }
-}?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Events</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="/BookHeaven2.0/css/events.css">
-    <script>
-        // Close alert messages after 5 seconds
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    alert.style.display = 'none';
-                }, 5000);
-            });
-        });
-    </script>
-</head>
-<body>
-    <?php include_once("../header.php"); ?>
-    <main>
-        <?php if (isset($_GET['joined'])): ?>
-            <div class="alert success">
-                Successfully joined the event! Your ticket has been sent to your email.
-                <form action="download_ticket.php" method="POST" style="display: inline;">
-                    <input type="hidden" name="event_id" value="<?= htmlspecialchars($_GET['event_id'] ?? '') ?>">
-                    <button type="submit" class="btn-link">Resend Ticket</button>
-                </form>
-            </div>
-        <?php elseif (isset($_GET['resent'])): ?>
-            <div class="alert success">Ticket has been resent to your email.</div>
-        <?php elseif (isset($_GET['error'])): ?>
-            <div class="alert error">
-                <?php 
-                switch ($_GET['error']) {
-                    case 'email': echo "Failed to send ticket email. Please try again."; break;
-                    case 'pdf': echo "Failed to generate ticket. Please try again."; break;
-                    case 'server': echo "Server error occurred. Please try again later."; break;
-                    case 'invalid_event': echo "Invalid event selected."; break;
-                    default: echo "An error occurred. Please try again.";
-                }
-                ?>
-            </div>
-        <?php endif; ?>
+}
 
-        <!-- Rest of your events page content -->
-         <?php include_once("../header.php"); ?>
-    <main>
-        <?php if (isset($_GET['joined'])): ?>
-            <div class="alert success">
-                Successfully joined the event! Your ticket has been sent to your email.
-                <form action="download_ticket.php" method="POST" style="display: inline;">
-                    <input type="hidden" name="event_id" value="<?= htmlspecialchars($_GET['event_id'] ?? '') ?>">
-                    <button type="submit" class="btn-link">Resend Ticket</button>
-                </form>
-            </div>
-        <?php elseif (isset($_GET['resent'])): ?>
-            <div class="alert success">Ticket has been resent to your email.</div>
-        <?php elseif (isset($_GET['error'])): ?>
-            <div class="alert error">
-                <?php 
-                switch ($_GET['error']) {
-                    case 'email': echo "Failed to send ticket email. Please try again."; break;
-                    case 'pdf': echo "Failed to generate ticket. Please try again."; break;
-                    default: echo "An error occurred. Please try again.";
-                }
-                ?>
-            </div>
-        <?php endif; ?>
-
-        <h1 class="section-title">My Events</h1>
-        <div class="events-container" id="joined-events">
-            <?php if (count($events_data['joinedEvents']) > 0): ?>
-                <?php foreach ($events_data['joinedEvents'] as $event): ?>
-                    <div class="event-card" data-id="<?= htmlspecialchars($event['event_id']) ?>">
-                        <div class="countdown">Joined</div>
-                        <img src="/BookHeaven2.0/<?= htmlspecialchars($event['banner_url'] ?? 'assets/default_event.jpg') ?>" 
-                             alt="<?= htmlspecialchars($event['name']) ?>" class="event-poster">
-                        <div class="event-content">
-                            <h3 class="event-title"><?= htmlspecialchars($event['name']) ?></h3>
-                            <div class="event-meta">
-                                <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($event['venue']) ?></span>
-                                <span><i class="far fa-calendar-alt"></i> <?= date('M d, Y h:i A', strtotime($event['event_date'])) ?></span>
-                            </div>
-                            <p class="event-details"><?= htmlspecialchars($event['description'] ?: 'No description available') ?></p>
-                            <div class="event-actions">
-                                <form method="POST">
-                                    <input type="hidden" name="event_id" value="<?= htmlspecialchars($event['event_id']) ?>">
-                                    <input type="hidden" name="action" value="leave">
-                                    <button class="join-btn leave-btn" type="submit">Leave Event</button>
-                                </form>
-                                <form action="download_ticket.php" method="POST">
-                                    <input type="hidden" name="event_id" value="<?= htmlspecialchars($event['event_id']) ?>">
-                                    <button class="download-btn" type="submit">
-                                        <i class="fas fa-download"></i> Get Ticket
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="no-events">You haven't joined any events yet</div>
-            <?php endif; ?>
-        </div>
-
-        <h1 class="section-title">Upcoming Events</h1>
-        <div class="events-container" id="upcoming-events">
-            <?php if (count($events_data['upcomingEvents']) > 0): ?>
-                <?php foreach ($events_data['upcomingEvents'] as $event): ?>
-                    <?php if (empty($event['is_joined'])): ?>
-                        <div class="event-card" data-id="<?= htmlspecialchars($event['event_id']) ?>">
-                            <div class="countdown"><?= date_diff(new DateTime(), new DateTime($event['event_date']))->format('%d days %H hours') ?> left</div>
-                            <img src="/BookHeaven2.0/<?= htmlspecialchars($event['banner_url'] ?? 'assets/default_event.jpg') ?>" 
-                                 alt="<?= htmlspecialchars($event['name']) ?>" class="event-poster">
-                            <div class="event-content">
-                                <h3 class="event-title"><?= htmlspecialchars($event['name']) ?></h3>
-                                <div class="event-meta">
-                                    <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($event['venue']) ?></span>
-                                    <span><i class="far fa-calendar-alt"></i> <?= date('M d, Y h:i A', strtotime($event['event_date'])) ?></span>
-                                </div>
-                                <p class="event-details"><?= htmlspecialchars($event['description'] ?: 'No description available') ?></p>
-                                <form method="POST">
-                                    <input type="hidden" name="event_id" value="<?= htmlspecialchars($event['event_id']) ?>">
-                                    <input type="hidden" name="action" value="join">
-                                    <button class="join-btn" type="submit">Join Event</button>
-                                </form>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="no-events">No upcoming events at the moment</div>
-            <?php endif; ?>
-        </div>
-    </main>
-    <?php include_once("../footer.php"); ?>
-</body>
-</html>
+echo "Completed inserting 50 users with subscription orders.";
+?>

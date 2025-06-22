@@ -153,17 +153,6 @@ if (isset($_POST['add_to_cart'])) {
     <div class="content-container">
         <!-- Left Side (30% width) -->
         <div class="left-content">
-            <!-- Filter Section -->
-            <div class="filter-section">
-                <h3 class="section-title">Filter Options</h3>
-                <div class="filter-options">
-                    <button class="filter-btn active" data-filter="all">All Books</button>
-                    <button class="filter-btn" data-filter="popular">Popular</button>
-                    <button class="filter-btn" data-filter="top-rated">Top Rated</button>
-                    <button class="filter-btn" data-filter="recent">Recently Added</button>
-                    <button class="filter-btn" data-filter="sale">On Sale</button>
-                </div>
-            </div>
 
             <!-- Writers Section -->
             <div class="writer-section">
@@ -184,13 +173,24 @@ if (isset($_POST['add_to_cart'])) {
                     <?php endwhile; ?>
                 </ul>
             </div>
-
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <h3 class="section-title">Filter Options</h3>
+                <div class="filter-options">
+                    <button class="filter-btn active" data-filter="all">All Books</button>
+                    <button class="filter-btn" data-filter="popular">Popular</button>
+                    <button class="filter-btn" data-filter="top-rated">Top Rated</button>
+                    <button class="filter-btn" data-filter="recent">Recently Added</button>
+                    <button class="filter-btn" data-filter="sale">On Sale</button>
+                </div>
+            </div>
             <!-- Genre Section -->
             <div class="genre-section">
                 <h3 class="section-title">Browse Genres</h3>
                 <ul class="genre-list" style="max-height: 300px; overflow-y: auto;">
                     <?php while ($genre = mysqli_fetch_assoc($genres_result)): ?>
-                        <li><a href="/BookHeaven2.0/php/genre_books.php?genre_id=<?php echo $genre['genre_id']; ?>"><i class="fas fa-book"></i>
+                        <li><a href="/BookHeaven2.0/php/genre_books.php?genre_id=<?php echo $genre['genre_id']; ?>"><i
+                                    class="fas fa-book"></i>
                                 <?php echo htmlspecialchars($genre['name']); ?></a></li>
                     <?php endwhile; ?>
                 </ul>
@@ -507,4 +507,5 @@ if (isset($_POST['add_to_cart'])) {
         });
     </script>
 </body>
+
 </html>
