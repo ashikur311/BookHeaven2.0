@@ -363,54 +363,6 @@ unset($_SESSION['error_message']);
                 </div>
             </div>
 
-            <!-- Add this section after the Sales Performance section -->
-            <!-- Subscription Plan Performance -->
-            <div class="report-section">
-                <div class="report-header">
-                    <h2 class="report-title">Subscription Plan Performance</h2>
-                    <span class="text-muted">Last 6 months</span>
-                </div>
-
-                <div class="chart-container">
-                    <canvas id="subscriptionChart"></canvas>
-                </div>
-
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th>New Subscriptions</th>
-                            <th>Renewals</th>
-                            <th>Total Revenue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        // Fetch monthly subscription data
-                        $subscription_monthly_data = $pdo->query(
-                            "SELECT 
-            DATE_FORMAT(so.issue_date, '%Y-%m') AS month,
-            COUNT(CASE WHEN so.status = 'active' THEN 1 END) AS new_subs,
-            COUNT(CASE WHEN so.status = 'renewed' THEN 1 END) AS renewals,
-            SUM(so.amount) AS revenue
-         FROM subscription_orders so
-         WHERE so.issue_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
-         GROUP BY DATE_FORMAT(so.issue_date, '%Y-%m')
-         ORDER BY month"
-                        )->fetchAll(PDO::FETCH_ASSOC);
-
-                        foreach ($subscription_monthly_data as $month): ?>
-                            <tr>
-                                <td><?= date("M Y", strtotime($month['month'] . '-01')) ?></td>
-                                <td><?= $month['new_subs'] ?></td>
-                                <td><?= $month['renewals'] ?></td>
-                                <td>$<?= number_format($month['revenue'], 2) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
             <div class="two-columns">
                 <!-- Book Categories -->
                 <div class="report-section">
@@ -470,7 +422,54 @@ unset($_SESSION['error_message']);
                     </table>
                 </div>
             </div>
+                                
+            <!-- Add this section after the Sales Performance section -->
+            <!-- Subscription Plan Performance -->
+            <div class="report-section">
+                <div class="report-header">
+                    <h2 class="report-title">Subscription Plan Performance</h2>
+                    <span class="text-muted">Last 6 months</span>
+                </div>
 
+                <div class="chart-container">
+                    <canvas id="subscriptionChart"></canvas>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>New Subscriptions</th>
+                            <th>Renewals</th>
+                            <th>Total Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        // Fetch monthly subscription data
+                        $subscription_monthly_data = $pdo->query(
+                            "SELECT 
+            DATE_FORMAT(so.issue_date, '%Y-%m') AS month,
+            COUNT(CASE WHEN so.status = 'active' THEN 1 END) AS new_subs,
+            COUNT(CASE WHEN so.status = 'renewed' THEN 1 END) AS renewals,
+            SUM(so.amount) AS revenue
+         FROM subscription_orders so
+         WHERE so.issue_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
+         GROUP BY DATE_FORMAT(so.issue_date, '%Y-%m')
+         ORDER BY month"
+                        )->fetchAll(PDO::FETCH_ASSOC);
+
+                        foreach ($subscription_monthly_data as $month): ?>
+                            <tr>
+                                <td><?= date("M Y", strtotime($month['month'] . '-01')) ?></td>
+                                <td><?= $month['new_subs'] ?></td>
+                                <td><?= $month['renewals'] ?></td>
+                                <td>$<?= number_format($month['revenue'], 2) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
             <!-- Top Selling Books -->
             <div class="report-section">
                 <div class="report-header">

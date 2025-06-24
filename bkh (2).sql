@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 22, 2025 at 06:07 PM
+-- Generation Time: Jun 23, 2025 at 09:48 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -42,7 +42,7 @@ CREATE TABLE `admin` (
 --
 
 INSERT INTO `admin` (`admin_id`, `username`, `password`, `email`, `full_name`, `created_at`, `updated_at`) VALUES
-(2, 'Akash', '$2y$10$58tfpeIpQ8wUmdWNViLIKep9tgvIohoKze5TPyoHuv22.ZWNsNnd2', 'ashikur31169@gmail.com', 'Ashikur Rahaman', '2025-06-22 04:50:19', '2025-06-22 15:57:29');
+(2, 'Akash', '$2y$10$58tfpeIpQ8wUmdWNViLIKep9tgvIohoKze5TPyoHuv22.ZWNsNnd2', 'ashikur31169@gmail.com', 'Ashikur Rahaman', '2025-06-22 04:50:19', '2025-06-23 07:48:54');
 
 -- --------------------------------------------------------
 
@@ -206,6 +206,8 @@ CREATE TABLE `book_writers` (
 --
 
 INSERT INTO `book_writers` (`id`, `book_id`, `writer_id`) VALUES
+(14, 5, 34),
+(12, 6, 6),
 (10, 7, 1),
 (11, 8, 24);
 
@@ -228,8 +230,9 @@ CREATE TABLE `cart` (
 --
 
 INSERT INTO `cart` (`id`, `user_id`, `book_id`, `quantity`, `added_at`) VALUES
-(17, 4, 6, 5, '2025-06-21 15:12:06'),
-(18, 4, 7, 1, '2025-06-22 22:06:31');
+(17, 4, 6, 1, '2025-06-21 15:12:06'),
+(18, 4, 7, 1, '2025-06-22 22:06:31'),
+(19, 4, 8, 1, '2025-06-23 21:48:15');
 
 -- --------------------------------------------------------
 
@@ -295,16 +298,16 @@ CREATE TABLE `events` (
 --
 
 INSERT INTO `events` (`event_id`, `name`, `venue`, `event_date`, `description`, `banner_url`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Writers Meet Readers', 'Dhaka Convention Center', '2025-06-21 18:13:53', 'A meet-up event for writers and readers', 'assets\\event_banners\\wmeetr.png', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:46:19'),
-(2, 'Workshop on Digital Marketing', 'Bangladesh Tech Hub', '2025-06-22 10:00:00', 'Workshop focused on digital marketing strategies', 'assets\\event_banners\\workshop1.webp', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:46:54'),
-(3, 'Motivational Speech', 'City Hall, Dhaka', '2025-07-14 14:00:00', 'Motivational speech by renowned speakers', 'assets\\event_banners\\motive.jpg', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 23:26:13'),
-(4, 'Book Launch Event', 'National Library', '2025-06-24 18:00:00', 'Launch event for a new fiction book', 'assets\\event_banners\\wmeetr.png', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:48:40'),
+(1, 'Writers Meet Readers', 'Dhaka Convention Center', '2025-06-21 18:13:53', 'A meet-up event for writers and readers', 'assets\\event_banners\\wmeetr.png', 'completed', '2025-06-21 22:25:59', '2025-06-23 01:00:04'),
+(2, 'Workshop on Digital Marketing', 'Bangladesh Tech Hub', '2025-06-22 10:00:00', 'Workshop focused on digital marketing strategies', 'assets\\event_banners\\workshop1.webp', 'completed', '2025-06-21 22:25:59', '2025-06-23 00:59:50'),
+(3, 'Motivational Speech', 'City Hall, Khulna', '2025-07-14 14:00:00', 'Motivational speech by renowned speakers', 'assets\\event_banners\\motive.jpg', 'upcoming', '2025-06-21 22:25:59', '2025-06-23 00:57:36'),
+(4, 'Book Launch Event', 'National Library', '2025-06-24 18:00:00', 'Launch event for a new fiction book', 'assets\\event_banners\\wmeetr.png', 'cancelled', '2025-06-21 22:25:59', '2025-06-23 01:00:19'),
 (5, 'AI and Automation Conference', 'International Conference Center', '2025-06-25 09:00:00', 'Conference discussing AI and automation trends', 'assets\\event_banners\\Inovstion.jpg', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:49:51'),
 (6, 'Art Exhibition', 'Dhaka Art Gallery', '2025-06-26 11:00:00', 'An exhibition showcasing contemporary art', 'assets\\event_banners\\art.jpg', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:50:14'),
 (7, 'Health and Wellness Seminar', 'University of Dhaka', '2025-06-27 15:00:00', 'Seminar on health and wellness topics', 'assets\\event_banners\\health.webp', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:50:36'),
 (8, 'Tech Innovation Expo', 'Bangabandhu International Conference Center', '2025-06-28 16:00:00', 'Exhibition on the latest in tech innovations', 'assets\\event_banners\\Ai.jpg', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:51:21'),
 (10, 'Entrepreneurship Meetup', 'Startup Hub Dhaka', '2025-06-30 13:00:00', 'Networking event for entrepreneurs and startups', 'assets\\event_banners\\digital.jpg', 'upcoming', '2025-06-21 22:25:59', '2025-06-21 22:51:59'),
-(14, 's', 'sxxss', '2025-06-27 01:58:00', 'ssss', 'assets/event_banners/s_1750564483.jpg', 'upcoming', '2025-06-22 09:54:43', '2025-06-22 09:59:05');
+(14, 'Sarathee', 'sxxss', '2025-06-27 01:58:00', 'ssss', 'assets/event_banners/s_1750564483.jpg', 'upcoming', '2025-06-22 09:54:43', '2025-06-23 02:39:15');
 
 -- --------------------------------------------------------
 
@@ -419,11 +422,11 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`order_id`, `user_id`, `order_date`, `status`, `total_amount`, `payment_method`, `shipping_address`) VALUES
-(1, 4, '2025-06-18 22:42:35', 'shipped', 2860.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
-(3, 4, '2025-06-18 23:28:44', 'cancelled', 1260.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
-(4, 4, '2025-06-19 00:42:53', 'pending', 1660.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
+(1, 4, '2025-04-08 22:42:35', 'shipped', 2860.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
+(3, 4, '2025-04-09 23:28:44', 'cancelled', 1260.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
+(4, 4, '2025-05-06 00:42:53', 'pending', 1660.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
 (5, 4, '2025-06-19 01:33:24', 'delivered', 1060.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
-(6, 4, '2025-06-19 01:48:33', 'delivered', 5260.00, 'online', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
+(6, 4, '2025-03-19 01:48:33', 'delivered', 5260.00, 'online', 'Raghunathpur, Narail, Dhaka , Bangladesh.'),
 (7, 4, '2025-06-21 10:46:22', 'pending', 780.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.');
 
 -- --------------------------------------------------------
@@ -509,7 +512,8 @@ CREATE TABLE `questions` (
 
 INSERT INTO `questions` (`question_id`, `user_id`, `book_id`, `question_text`, `created_at`, `updated_at`) VALUES
 (1, 4, 4, 'Is this available?', '2025-06-18 15:49:18', '2025-06-18 15:49:18'),
-(2, 4, 4, 'xasssax', '2025-06-18 15:52:52', '2025-06-18 15:52:52');
+(2, 4, 4, 'xasssax', '2025-06-18 15:52:52', '2025-06-18 15:52:52'),
+(3, 4, 5, 'Hi', '2025-06-23 03:37:44', '2025-06-23 03:37:44');
 
 -- --------------------------------------------------------
 
@@ -575,6 +579,46 @@ CREATE TABLE `subscription_orders` (
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `subscription_orders`
+--
+
+INSERT INTO `subscription_orders` (`id`, `user_id`, `plan_id`, `amount`, `invoice_number`, `status`, `payment_status`, `issue_date`, `expire_date`, `payment_method`, `updated_at`) VALUES
+(1, 4, 4, 780.00, 'INVC122343', 'active', 'paid', '2025-05-07', '2025-09-11', 'Bkash', NULL),
+(3, 57, 2, 24.99, 'INV-20250622-544F10', 'active', 'paid', '2025-06-22', '2025-09-22', 'bank_transfer', NULL),
+(4, 58, 2, 24.99, 'INV-20250622-445CBB', 'active', 'paid', '2025-06-22', '2025-09-22', 'paypal', NULL),
+(5, 59, 2, 24.99, 'INV-20250622-AE9D11', 'active', 'paid', '2025-06-22', '2025-09-22', 'bank_transfer', NULL),
+(9, 63, 2, 24.99, 'INV-20250622-47B672', 'active', 'paid', '2025-06-22', '2025-09-22', 'credit_card', NULL),
+(11, 66, 2, 24.99, 'INV-20250622-48B135', 'active', 'paid', '2025-06-22', '2025-09-22', 'credit_card', NULL),
+(12, 67, 1, 9.99, 'INV-20250622-DA1230', 'active', 'paid', '2025-06-22', '2025-07-22', 'credit_card', NULL),
+(15, 70, 2, 24.99, 'INV-20250622-E65D5B', 'active', 'paid', '2025-02-21', '2025-09-22', 'paypal', NULL),
+(16, 71, 2, 24.99, 'INV-20250622-6A9420', 'active', 'paid', '2025-06-22', '2025-09-22', 'paypal', NULL),
+(17, 72, 2, 24.99, 'INV-20250622-AC1FAF', 'active', 'unpaid', '2025-03-05', '2025-09-22', NULL, NULL),
+(18, 73, 4, 24.99, 'INV-20250622-59D6F5', 'active', 'paid', '2025-06-22', '2025-09-22', 'credit_card', NULL),
+(20, 75, 1, 9.99, 'INV-20250622-C04F26', 'active', 'paid', '2025-06-22', '2025-07-22', 'credit_card', NULL),
+(23, 79, 1, 9.99, 'INV-20250622-386FE9', 'active', 'unpaid', '2025-04-21', '2025-07-22', NULL, NULL),
+(25, 81, 2, 24.99, 'INV-20250622-64FE21', 'active', 'paid', '2025-06-22', '2025-09-22', 'bank_transfer', NULL),
+(26, 82, 1, 9.99, 'INV-20250622-2DC61B', 'active', 'paid', '2025-06-22', '2025-07-22', 'credit_card', NULL),
+(27, 83, 2, 24.99, 'INV-20250622-DB8B45', 'active', 'paid', '2025-06-22', '2025-09-22', 'bank_transfer', NULL),
+(28, 84, 2, 24.99, 'INV-20250622-E23053', 'active', 'paid', '2025-04-06', '2025-09-22', 'paypal', NULL),
+(29, 85, 2, 24.99, 'INV-20250622-F03219', 'active', 'unpaid', '2025-06-22', '2025-09-22', NULL, NULL),
+(31, 87, 2, 24.99, 'INV-20250622-388D73', 'active', 'paid', '2025-06-22', '2025-09-22', 'credit_card', NULL),
+(32, 88, 4, 24.99, 'INV-20250622-E63CCA', 'active', 'paid', '2025-06-22', '2025-09-22', 'bank_transfer', NULL),
+(33, 89, 1, 9.99, 'INV-20250622-16AD12', 'active', 'unpaid', '2025-06-22', '2025-07-22', NULL, NULL),
+(34, 90, 4, 24.99, 'INV-20250622-B95CA5', 'active', 'paid', '2025-05-16', '2025-09-22', 'bank_transfer', NULL),
+(35, 91, 2, 24.99, 'INV-20250622-AD9344', 'active', 'paid', '2025-06-22', '2025-09-22', 'paypal', NULL),
+(36, 92, 1, 9.99, 'INV-20250622-B6B8FD', 'active', 'paid', '2025-06-22', '2025-07-22', 'credit_card', NULL),
+(37, 93, 1, 9.99, 'INV-20250622-834265', 'active', 'paid', '2025-06-22', '2025-07-22', 'bank_transfer', NULL),
+(38, 94, 1, 9.99, 'INV-20250622-0C0752', 'active', 'paid', '2025-06-22', '2025-07-22', 'credit_card', NULL),
+(39, 95, 1, 9.99, 'INV-20250622-304CFC', 'active', 'paid', '2025-06-22', '2025-07-22', 'paypal', NULL),
+(40, 96, 2, 24.99, 'INV-20250622-DA0750', 'active', 'paid', '2025-06-22', '2025-09-22', 'paypal', NULL),
+(42, 98, 1, 9.99, 'INV-20250622-BE1DDD', 'active', 'paid', '2025-06-22', '2025-07-22', 'bank_transfer', NULL),
+(44, 100, 1, 9.99, 'INV-20250622-333A23', 'active', 'paid', '2025-06-22', '2025-07-22', 'credit_card', NULL),
+(45, 101, 2, 24.99, 'INV-20250622-16B06C', 'active', 'paid', '2025-06-22', '2025-09-22', 'paypal', NULL),
+(47, 103, 2, 24.99, 'INV-20250622-DDC1BF', 'active', 'paid', '2025-06-22', '2025-09-22', 'bank_transfer', NULL),
+(48, 104, 2, 24.99, 'INV-20250622-DC7D87', 'active', 'paid', '2025-06-22', '2025-09-22', 'paypal', NULL),
+(49, 105, 2, 24.99, 'INV-20250622-008852', 'active', 'paid', '2025-06-22', '2025-09-22', 'credit_card', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -599,8 +643,9 @@ CREATE TABLE `subscription_plans` (
 --
 
 INSERT INTO `subscription_plans` (`plan_id`, `plan_name`, `price`, `validity_days`, `book_quantity`, `audiobook_quantity`, `description`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'Premium', 1200.00, 60, 40, 10, 'You get 27/7 full support, free shipping.', 'active', '2025-06-21 10:33:11', '2025-06-21 10:33:11'),
-(2, 'Akash', 1200.00, 60, 10, 10, 'ajnckjiubcj ksjcu', 'active', '2025-06-22 09:39:14', '2025-06-22 09:39:14');
+(1, 'Premium', 1200.00, 60, 45, 10, 'You get 27/7 full support', 'active', '2025-06-21 10:33:11', '2025-06-23 00:31:19'),
+(2, 'Gold', 1200.00, 60, 10, 10, 'ajnckjiubcj ksjcu', 'active', '2025-06-22 09:39:14', '2025-06-22 23:29:08'),
+(4, 'Basic', 780.00, 60, 40, 30, 'This is for premium user.', 'active', '2025-06-22 23:28:49', '2025-06-22 23:54:53');
 
 -- --------------------------------------------------------
 
@@ -645,7 +690,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `pass` varchar(255) NOT NULL,
-  `userimageurl` text DEFAULT NULL,
+  `user_profile` varchar(255) DEFAULT NULL,
   `create_time` datetime DEFAULT current_timestamp(),
   `update_time` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `email_verified` tinyint(1) DEFAULT 0,
@@ -658,8 +703,106 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `username`, `email`, `pass`, `userimageurl`, `create_time`, `update_time`, `email_verified`, `two_step_verification`, `last_login`, `login_count`) VALUES
-(4, 'Akash', 'ashikur31169@gmail.com', '$2y$10$SSXmEH8pRsI9GM.9hzFmo.kg13ioDPR6XPFNZEoGQmWvdeCxHBdm.', 'assets\\user_profile\\person.jpg', '2025-06-17 16:06:42', '2025-06-22 21:43:08', 0, 0, '2025-06-22 21:43:08', 20);
+INSERT INTO `users` (`user_id`, `username`, `email`, `pass`, `user_profile`, `create_time`, `update_time`, `email_verified`, `two_step_verification`, `last_login`, `login_count`) VALUES
+(4, 'Akash', 'ashikur31169@gmail.com', '$2y$10$mj4OSI2BglfRPndjz58dbOKQS8tTDL6T.KLCYg01p.66wmawUkNI2', 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', '2025-06-17 16:06:42', '2025-06-24 01:25:33', 0, 0, '2025-06-23 23:23:49', 27),
+(6, 'clopez37', 'charlotte.lopez91@example.com', '$2y$10$W0U0XjwQVobR82g80Gqr7Ok29IkVino/oYycSZOApfOMtjE677tdG', NULL, '2025-03-02 23:52:05', '2025-06-23 00:14:13', 0, 0, NULL, 0),
+(7, 'ewilliams96', 'evelyn.williams86@example.com', '$2y$10$T1kFDYbkrT4pFiZcw7wVdeITrPSfu9jeeCNvWmImO9lpak3UxLwye', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(8, 'rlopez84', 'robert.lopez84@example.com', '$2y$10$kFzOU5yrYv/bfS9nSO4Bl.I.SOhUvzrDKcoBTYv1zvRbaW2s/YYZ.', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(9, 'mwilson20', 'michael.wilson58@example.com', '$2y$10$7SH8KtFxAjpvY0vj6Kfy0OAwBQomiFTIc5/mD4t3d0T3ycOIU3v8y', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(10, 'mdavis94', 'michael.davis62@example.com', '$2y$10$4hJTJ62yTvTbiMtfJmX3Ne61GskZLo8NvnkpH3RCxA74uVVK23oSi', NULL, '2025-04-15 22:52:05', '2025-06-23 00:14:52', 0, 0, NULL, 0),
+(11, 'srodriguez71', 'sophia.rodriguez19@example.com', '$2y$10$4PF7/C0a5nhdO9bSxSxkEO.g3eI531Z22l.hPJ1B6wvCvmckdv1YC', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(12, 'hdavis19', 'harper.davis16@example.com', '$2y$10$MYWqCzhpFhoAmTr0s9dNTOZxnfVSGAwST1HtApHn3ZLZHO8Rjkx0q', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(13, 'adavis83', 'ava.davis62@example.com', '$2y$10$THAsHNyJUtDs1jepakpA3eiZhZIiFMMCcakroM13oY.7JVUqY/1y.', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(14, 'rgarcia2', 'robert.garcia54@example.com', '$2y$10$KQTfNkSTtKFZlcXlTLvKm.l.g12bE/5FpHy.mOgTjEsYp8ZFnGGyO', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(15, 'dmartin86', 'daniel.martin22@example.com', '$2y$10$hGHcEZHK6NK.n5vTCqAiXurYccLfCgH96T8kszeMc2xMXRTfhP8aS', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(16, 'sthomas28', 'sophia.thomas97@example.com', '$2y$10$qDWGTPVrrhGyZKX5PM8oiuWsHONqb27Q9c6TRBjWDJ0r0ACJnTE6i', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(17, 'wjones12', 'william.jones59@example.com', '$2y$10$lRWVQRkLRawRJ9EGy00L6.V.OJGI6jg5LySZQAteYWhCCHsn6OK.i', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(18, 'mmartinez47', 'mia.martinez72@example.com', '$2y$10$cZG7vbw/uatoSsnQogKLSuK.1GBfiYOBVsv2ri0DT/nzeaqRIvowO', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(19, 'hdavis12', 'harper.davis89@example.com', '$2y$10$GbtF3KODX8BLJ8eg4hw1VO70iIe9xJb.IGSQ3MwOjE5XkTM2Lpq8e', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
+(20, 'mdavis52', 'michael.davis48@example.com', '$2y$10$bhxlWTe2d5SFC53xwgYpUuhwqU0hCD5kPYW0xFHoug2I4eVppU.2m', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(21, 'jgonzalez92', 'john.gonzalez41@example.com', '$2y$10$XR8inxeWme8Q/YvyL2kmPelNaGcd5kSlfs.N0THKQWe9kfFlB1fzG', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(22, 'djackson46', 'daniel.jackson39@example.com', '$2y$10$kb/D0b8QRzpEl3rEcA7H/eRksOSqYnW0cV/1vt9BhwY.JxiwWJQbG', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(23, 'sgarcia17', 'sophia.garcia57@example.com', '$2y$10$Z8mLoS6.O.6rBZDQp4DzfORQIysjmdTwBW737ufyypchx9W5EihX2', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(24, 'dthomas17', 'daniel.thomas91@example.com', '$2y$10$XeXaT.RRxNoVg1cEqfe.zuqw4VRFnPAXJofyd/52W2UqormVj52Ou', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(25, 'rlopez35', 'richard.lopez54@example.com', '$2y$10$69y6MEBo46IsCSXn8z8mEuxKZeSKxW715whIFSWoFLVifuJoBaNX2', NULL, '2025-01-10 23:52:06', '2025-06-23 00:21:58', 0, 0, NULL, 0),
+(26, 'ewilliams75', 'evelyn.williams94@example.com', '$2y$10$PwmXDcIET4gtRAUTxilwxuFFdPCV5Z1ZPk6UMokckNWMD.aQTbPQq', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(27, 'rwilson22', 'richard.wilson47@example.com', '$2y$10$j6Mk9wjDCm5w/gOh8Kbtkeg3lr5eRB2z2cKKTs1HwnoGLJtXAQ3vC', NULL, '2025-01-16 23:52:06', '2025-06-23 00:21:33', 0, 0, NULL, 0),
+(28, 'ddavis56', 'daniel.davis50@example.com', '$2y$10$v7l7wTFlX8GRe/q1I6dIT.nOhx6Sy0IlHzil1GD01lW7/MkH.aCbu', NULL, '2025-01-08 23:52:06', '2025-06-23 00:21:21', 0, 0, NULL, 0),
+(29, 'edavis90', 'evelyn.davis81@example.com', '$2y$10$31yOX226oueuAKn9tEHv7uiDfDcylcEPkrACimpNBLM5b1JZSQOju', NULL, '2025-01-15 23:52:06', '2025-06-23 00:21:10', 0, 0, NULL, 0),
+(30, 'agarcia1', 'amelia.garcia81@example.com', '$2y$10$1BAOFVF1qj/oGdH9VfW/pOD2LSez7zcL3QgEXq0dvT6NUTpNwls4G', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(31, 'jsmith10', 'john.smith84@example.com', '$2y$10$YyOnDPKoZACwVQFZ1SZJzeKNTQWlV.tvAsckaFdWS9V0ZIgzPi1Qe', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(32, 'dmoore33', 'daniel.moore29@example.com', '$2y$10$EHgNMgTu27gAuzVAAgzVcub3xKg.9x31ryGsrroydjk2x9bLaNoFm', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(33, 'manderson4', 'michael.anderson55@example.com', '$2y$10$hGXeM9TYGW3L8d9f5xEnHull0swLoMz.J6YFCePQz3lq3OnOKcWDu', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(34, 'mlopez8', 'mia.lopez24@example.com', '$2y$10$gWnqrcRvmpEAX7kG/QQtZuRxvhbwDzgpd8/.rfkWcvcsG6GJbE1fC', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(35, 'wmoore80', 'william.moore94@example.com', '$2y$10$VTLi3rHc0NLlimojdJ.35.6HEE6pyrENa9aWMu131dGISNawBpKlO', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(36, 'mjohnson17', 'mia.johnson13@example.com', '$2y$10$OqRDPbvXan4tQ0gkbrLU7eYOIt6mz133oS4Rtbt6KL0oH.DjCkGPy', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(37, 'ddavis11', 'david.davis2@example.com', '$2y$10$gxTNEoa.F1ipTgmSwY7C4uE4ijXTGem1xUEisHNAN/Zv4wmeFvHm2', NULL, '2025-06-22 23:52:06', '2025-06-22 23:52:06', 0, 0, NULL, 0),
+(38, 'jdavis88', 'joseph.davis96@example.com', '$2y$10$4MAbpjbTTSmQ5.ZoHZmbputq5fdOkyV5FMj0GZAaQtwR2GCl/8Ti2', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(39, 'rmartin94', 'robert.martin17@example.com', '$2y$10$RFU7EszxK/j2f7xd4Fkm9eZcDv0a565dKNKZs2.Au7sw2UOUVnBUu', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(40, 'mlopez71', 'mia.lopez85@example.com', '$2y$10$grBLKSekleSlqWMawqPPR.BnSzuJmRDss3bS45qzWXnxJ5AhTnwQ6', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(41, 'otaylor14', 'olivia.taylor18@example.com', '$2y$10$K4hWodnspqvn9TXEDKlrRuyWLc8NO6ia1htBNaCeiyCnop93h/3X.', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(42, 'rdavis72', 'richard.davis63@example.com', '$2y$10$udY5ZnC9qKhBF3CrACs3Bea23fKZXfZEh09BTQxoAXjRiqn7e2C6u', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(43, 'jjackson55', 'john.jackson8@example.com', '$2y$10$6MiPxNTBgVzjvn0p4n93zuouRebHGH6OCkFHfuELhyCmusl9wUrPW', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(44, 'ejackson65', 'evelyn.jackson56@example.com', '$2y$10$kUlwZ9AcySInpkuQ5exYb.KcB5jfwYCIeGh4J51dKLgsabG9V7u36', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(45, 'shernandez2', 'sophia.hernandez41@example.com', '$2y$10$h2RXP684yT1jxxFy2ZjwpOVhbS.U15v/oQSYKQo6i/fqxmyOwzO5a', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(46, 'tdavis67', 'thomas.davis72@example.com', '$2y$10$KllYpp/t0ALMkenWaO2R7uhtlQijwRQ3xRkXHaSysKHeqL9wtBoXC', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(47, 'arodriguez91', 'amelia.rodriguez14@example.com', '$2y$10$TX4lH1oN.TzeJYv2hZ.41.8Cv6wZh5dKu.HCVh3wrVBSfP2HHBj8e', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(48, 'jjackson95', 'james.jackson27@example.com', '$2y$10$uuPBaQHiqg8hb4gbRSCGu.3tWXa0NqD9eNtLH0q1HLg6/rV4jvMPC', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(49, 'tlopez52', 'thomas.lopez48@example.com', '$2y$10$bdU8dXNky6KB9v8O/2M.beamM0U3GU6.kcwhcFwKZXZGqePRKI0le', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(50, 'mgonzalez89', 'michael.gonzalez88@example.com', '$2y$10$iyIhJDiqX9JoY.M.LR1YiOXcrPDEA43qkiXAcmRSLCKI7F8AXjsQe', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(51, 'hmoore50', 'harper.moore95@example.com', '$2y$10$diWK7I6Ab.WWherJRYPx7.a8CipHfCior.WyowWqzqOfaSpVdewai', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(52, 'jsmith16', 'james.smith31@example.com', '$2y$10$glTilCPuc1H92bMxwO./RuhCbQlUN/OYV4tQhcxSB6h7N57xAVDSC', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(53, 'rtaylor33', 'robert.taylor54@example.com', '$2y$10$uCerxrkSzt32ubDZSazv5uZzp7LEVUkPFwMWdHBEmh0vPaqCHaIsO', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(54, 'shernandez29', 'sophia.hernandez30@example.com', '$2y$10$DZ4iiSktHYNcQuxSrpRk6ONLxVf9OIlBwJISaP6WGhA3oOT4WyQMq', NULL, '2025-06-22 23:52:07', '2025-06-22 23:52:07', 0, 0, NULL, 0),
+(55, 'imartinez85', 'isabella.martinez67@example.com', '$2y$10$l0NG6Ne3.CYVv.AILP/ZmOZ3gHXmYaibBO5iTzE7.1saLbOeKtUU6', NULL, '2025-06-22 23:52:08', '2025-06-22 23:52:08', 0, 0, NULL, 0),
+(56, 'hthomas69', 'harper.thomas35@example.com', '$2y$10$gAFa0a15pmm.3Ljwmg36T.DzDm2YhdppBxn1Im6Tdq7qYHytJyGWS', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(57, 'jbrown52', 'joseph.brown37@example.com', '$2y$10$TxmIN.2yGmhTCGotEgCLD.IK5OYAcvLci5E/Ouo4pJSjnniA38QnC', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(58, 'mgonzalez25', 'michael.gonzalez36@example.com', '$2y$10$RTcIaUPHcobS6jLYErFI.u9uI3r8MrXNB.mbKjBu3.XcJvX7zFV8y', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(59, 'wbrown12', 'william.brown72@example.com', '$2y$10$rFFEMgrW.xtXr.gHbKauXemy4kHm9W8uP.8IjXUpVAkS9wuBXxesW', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(60, 'dthomas1', 'david.thomas22@example.com', '$2y$10$pvyfh0CcnKyGVNRN6N8zwO9xsEqOYwul6A3jOAxN6LhUoyS8xMHru', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(61, 'dhernandez13', 'daniel.hernandez87@example.com', '$2y$10$SxAFMlzOgEpcvFBS6PfD4.9BvxuuIfpDJUmakcc1/meB7rHZxK/CG', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(62, 'jhernandez18', 'james.hernandez26@example.com', '$2y$10$rHC86lr75/W22Of/.d6KneAqaakDmFMRahzKD59J1LK7iXBPWa1wy', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(63, 'hgonzalez87', 'harper.gonzalez19@example.com', '$2y$10$yS2rzXnHEc9ZeXdd2Hxw1O41tH0AwNmRxSVJ7KtMbHdScuCupGl/u', NULL, '2025-06-23 00:09:11', '2025-06-23 00:09:11', 0, 0, NULL, 0),
+(65, 'rjones27', 'robert.jones39@example.com', '$2y$10$5nruO/By99ZwcoGdYlXJ0eb5LZ/kExOG1EnPkJStqmQFzv2Me2Jva', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(66, 'imartin12', 'isabella.martin84@example.com', '$2y$10$1Zhc3PEXYjkuMl0bwHQPe.aGAPQDaUw1W8DmSNzVrLt4Ije3t7Ei2', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(67, 'jmartinez49', 'joseph.martinez62@example.com', '$2y$10$v7KdAcuS2gTjtgpMBXwM8O09pGq9A6As/k/VDP3vgqyDH1E8zGp.W', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(68, 'tjohnson27', 'thomas.johnson2@example.com', '$2y$10$qnD1vqEMl9ehOQYv0s0SluPmk0WLoalbM4Nx7EWGLyfDtWJ2yFIZG', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(69, 'cgonzalez36', 'charlotte.gonzalez51@example.com', '$2y$10$miCE4ZW2zYhScRwHbpD4OemAY9bxbA.UVgJSFWddSnE5rSUqN9ay.', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(70, 'owilliams88', 'olivia.williams63@example.com', '$2y$10$gktNudgXcWPGsr9C7HslGO6HEBSQNbLjAJvxlci49xDZoQ0HTN89S', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(71, 'trodriguez17', 'thomas.rodriguez31@example.com', '$2y$10$rgYsLOqzsiORGIhviH.uSeg6z8TI/IBpTKhvcUWbYQL7swJ.H81Ja', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(72, 'jdavis54', 'james.davis4@example.com', '$2y$10$g2UM9yWlJMgXsLJGwTFy3O.PyLmUYfqgZBRB54dPozqcDvSMJZYOa', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(73, 'awilson75', 'ava.wilson23@example.com', '$2y$10$.mwl78f7qHyBfgoJ06TdmenCf9XslPFvBm.4xho/7O2YjBBXMC9mW', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(74, 'ehernandez96', 'evelyn.hernandez44@example.com', '$2y$10$WhyWa3RGWNsRQt8ucdAzq.zz8rH7nhG/VOvhwgyHWxPQXZ6PRyUdW', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(75, 'amartinez44', 'ava.martinez17@example.com', '$2y$10$SFLuOOoSKMTJ6ZwJ8CYw2uhDFm.FhxSFAD9AYuMOmt.hz6YTzg5qS', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(76, 'jmoore40', 'james.moore30@example.com', '$2y$10$3y35.WckS8fKcNd3nIQ8DOCuMBu/ktV.BKbPEz81HNOt7XgHAavMS', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(78, 'rhernandez75', 'richard.hernandez15@example.com', '$2y$10$p70j2hiMjPDz/oHMk214guWCUyEgfPqApWkhG9x5KHAV47JEGDJtW', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(79, 'tgonzalez22', 'thomas.gonzalez17@example.com', '$2y$10$tApCJ2.Rp4DxYz540A9.M.6CQajr/QxhChiM9K.6qNaNgFSbi5Y/6', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(80, 'tsmith7', 'thomas.smith19@example.com', '$2y$10$8mVMgpsc4x8rpOL/B1cW4OYZDXjfXp./zp7g.Cvr7HP7z1EI84IxO', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(81, 'djones97', 'david.jones28@example.com', '$2y$10$8NpmtZfMgrJRjio1vMcSZ.AA7woyjDmuKQO1AFrCBPe.Wh/d0noYG', NULL, '2025-06-23 00:09:12', '2025-06-23 00:09:12', 0, 0, NULL, 0),
+(82, 'rjackson41', 'richard.jackson73@example.com', '$2y$10$aKUPa1nkCDcULcXsQ1LxAuDFAUtEyrDlcf1BejHBcWwVpDFyOUTXa', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(83, 'mwilson16', 'mia.wilson88@example.com', '$2y$10$n0jOlSNd47bvBqcOi0uem.Y8uHXUp49jzK2E9o6HbMC7FQ.Hgk5ta', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(84, 'smoore15', 'sophia.moore78@example.com', '$2y$10$MzhYcH.2EglbSzzTrpXFXOa8SMjVmN/Lic2dghacMO3ZFxr6rmB6G', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(85, 'ejackson43', 'evelyn.jackson44@example.com', '$2y$10$cjAXwIazbJG0kM9RlIjGS.S7GcwpCzLmP8oQvuq1JiBSGyb1baGGi', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(86, 'adavis23', 'ava.davis51@example.com', '$2y$10$Wrfh5F95ebuHxmpO20qZOuH5L/R7Y2RCsgDlQqDKh1HuGjRa8ZfWS', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(87, 'tjackson78', 'thomas.jackson41@example.com', '$2y$10$PJv1Ky41PuK8JIVIo9cAPu1WzQw1bEctTqUfV2bQsBujCHccF2/3y', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(88, 'dwilliams98', 'david.williams78@example.com', '$2y$10$m00rqWw1jwkXAiq52V4WNOl/q4zCqn6YT9tRQXxECxaCroPUet5Te', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(89, 'smoore86', 'sophia.moore50@example.com', '$2y$10$W349PR786mwf3eqa92L2f.lBR/S7LtSh11pG3PwiTMEuuZQ9M4oty', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(90, 'rrodriguez46', 'richard.rodriguez62@example.com', '$2y$10$cRKYN.5maf1W3eWtV82ksOe.bYKHMJSWEgrG5ng2FnECQximLUq4q', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(91, 'hmiller58', 'harper.miller65@example.com', '$2y$10$eLLTCbabPsRMaS7nI8pGuOyj3TBjS0wHxmebTwwqsm3IVpl6wUHpK', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(92, 'mdavis96', 'mia.davis30@example.com', '$2y$10$ijvDPLGXNx8gpbtA4TYeOOu4atxoNESmJYwBTcEwt1NzfwIFj808y', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(93, 'rhernandez70', 'richard.hernandez44@example.com', '$2y$10$S7mTq0flaqU1YLX9WMvaWOr.75y62mJHlMSNj39JJXKHEniPe8vTG', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(94, 'wsmith95', 'william.smith87@example.com', '$2y$10$9JbgToB.yE9bvJPdvbtXgOCjHiv95StdaMJr906r2wKej9DUL05vO', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(95, 'mmiller38', 'mia.miller54@example.com', '$2y$10$46av.KEc9Le7K7HCfv44uOzuSSuiqeoZi48KzNO56Rd8cAeTk8zU2', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(96, 'edavis85', 'emma.davis93@example.com', '$2y$10$V/mnHm.BVQnkRMXnE2svgulwtuovtkkJWEUss1EIiycst9OsvKgWq', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(97, 'ethomas99', 'evelyn.thomas94@example.com', '$2y$10$Ia2l0xDbH2z3KLBzUgd4t./VBlk1.KOty8lTj28yhhwOdf1DpTK..', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(98, 'hmartinez22', 'harper.martinez2@example.com', '$2y$10$tjECBEZFZgpKRIwwpmufVeKM.zr/aUHnLRc.lSersJNSMtORJlwpm', NULL, '2025-06-23 00:09:13', '2025-06-23 00:09:13', 0, 0, NULL, 0),
+(99, 'jwilliams56', 'james.williams72@example.com', '$2y$10$AgR0dd/l8fdW5MNhBn.bDuVChAobwFxOjOhS7ckM78bb2qU/SI/ka', NULL, '2025-06-23 00:09:14', '2025-06-23 00:09:14', 0, 0, NULL, 0),
+(100, 'rhernandez60', 'richard.hernandez33@example.com', '$2y$10$WVnM2s5ZRhVMh5jWSaSpPuJmZCcnBHEtSharZjY2IQM7.Lkwlk3Ky', NULL, '2025-06-23 00:09:14', '2025-06-23 00:09:14', 0, 0, NULL, 0),
+(101, 'jsmith31', 'joseph.smith49@example.com', '$2y$10$4aO9POdm6gRymOEFHmkBE.nqmBHllL/8Y.QgW.MCwgPSTj4hPlcle', NULL, '2025-06-23 00:09:14', '2025-06-23 00:09:14', 0, 0, NULL, 0),
+(102, 'hgarcia13', 'harper.garcia49@example.com', '$2y$10$aXVDfk7pg7M5FWXOyj07u.vFgzZaPzWbPrWGJC3johizmZO5m9O3a', NULL, '2025-06-23 00:09:14', '2025-06-23 00:09:14', 0, 0, NULL, 0),
+(103, 'rmartinez43', 'robert.martinez81@example.com', '$2y$10$WuGW5O7bjrC3NhKuD7URY.IbJ1os7WH.b31xqPyKnlWX1dX4uB74K', NULL, '2025-06-23 00:09:14', '2025-06-23 00:09:14', 0, 0, NULL, 0),
+(104, 'ijackson71', 'isabella.jackson86@example.com', '$2y$10$xz2SRc.N6qSGMYKUOAlYJOGHMQ3iQcSdIL974t0j4BTs5SJKfzLda', NULL, '2025-05-12 00:09:14', '2025-06-23 00:22:58', 0, 0, NULL, 0),
+(105, 'amartinez72', 'amelia.martinez7@example.com', '$2y$10$Vis1iUtg1AHmbL1P/0ykGeL0f1O3P1Gy7KvnLSJMyExj0LIko3EOC', NULL, '2025-02-06 00:09:14', '2025-06-23 00:22:42', 0, 0, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -698,7 +841,39 @@ INSERT INTO `user_activities` (`auth_id`, `user_id`, `login_ip`, `login_timestam
 (19, 4, '::1', '2025-06-21 23:58:49', '2025-06-21 23:58:49', 'active'),
 (20, 4, '::1', '2025-06-22 00:40:03', '2025-06-22 00:40:03', 'active'),
 (21, 4, '::1', '2025-06-22 09:44:39', '2025-06-22 09:44:39', 'active'),
-(22, 4, '::1', '2025-06-22 21:43:08', '2025-06-22 21:43:08', 'active');
+(22, 4, '::1', '2025-06-22 21:43:08', '2025-06-22 21:43:08', 'active'),
+(23, 4, '::1', '2025-06-23 09:37:33', '2025-06-23 09:37:33', 'active'),
+(24, 4, '::1', '2025-06-23 12:36:46', '2025-06-23 12:36:46', 'active'),
+(25, 4, '::1', '2025-06-23 13:59:50', '2025-06-23 13:59:50', 'active'),
+(26, 4, '::1', '2025-06-23 14:21:17', '2025-06-23 14:21:17', 'active'),
+(27, 4, '::1', '2025-06-23 20:56:00', '2025-06-23 20:56:00', 'active'),
+(28, 4, '::1', '2025-06-23 22:43:19', '2025-06-23 22:43:19', 'active'),
+(29, 4, '::1', '2025-06-23 23:23:49', '2025-06-23 23:23:49', 'active');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_billing_address`
+--
+
+CREATE TABLE `user_billing_address` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `street_address` varchar(255) NOT NULL,
+  `city` varchar(100) NOT NULL,
+  `division` varchar(100) NOT NULL,
+  `zip_code` varchar(20) NOT NULL,
+  `country` varchar(100) NOT NULL DEFAULT 'Bangladesh',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `user_billing_address`
+--
+
+INSERT INTO `user_billing_address` (`id`, `user_id`, `street_address`, `city`, `division`, `zip_code`, `country`, `created_at`, `updated_at`) VALUES
+(1, 4, 'Satarkul, Alinagar Gate', 'Dhaka', 'Dhaka', '1201', 'Bangladesh', '2025-06-23 22:35:58', '2025-06-23 22:35:58');
 
 -- --------------------------------------------------------
 
@@ -719,7 +894,105 @@ CREATE TABLE `user_info` (
 --
 
 INSERT INTO `user_info` (`user_id`, `birthday`, `phone`, `address`, `userimageurl`) VALUES
-(4, '2025-02-12', '01777895889', 'Raghunathpur, Narail, Dhaka , Bangladesh.', NULL);
+(4, '2025-02-12', '0199988430', 'Raghunathpur, Narail, Dhaka , Bangladesh.', NULL),
+(6, '1963-01-22', '393-513-2335', '6324 Main St, New York, NW 63156', NULL),
+(7, '1993-08-23', '808-657-1324', '2850 Willow Blvd, Dallas, OA 75420', NULL),
+(8, '2001-09-27', '437-450-2342', '4365 Willow Blvd, Houston, VL 65814', NULL),
+(9, '1994-03-07', '774-690-2572', '705 Cedar Ln, San Antonio, UL 87086', NULL),
+(10, '1999-11-13', '484-702-8505', '6475 Oak Ave, Dallas, IW 30897', NULL),
+(11, '1995-01-10', '505-977-8899', '3299 Magnolia Ave, Chicago, CG 95927', NULL),
+(12, '1976-01-07', '752-415-3617', '1613 Pine Rd, New York, ZM 87409', NULL),
+(13, '1959-08-22', '295-401-1695', '6143 Birch Way, New York, OE 69195', NULL),
+(14, '1988-07-30', '215-809-6750', '280 Magnolia Ave, New York, DE 53918', NULL),
+(15, '2005-10-30', '586-449-9939', '9612 Pine Rd, New York, TC 86313', NULL),
+(16, '1988-01-12', '298-283-2437', '570 Oak Ave, Dallas, AX 30099', NULL),
+(17, '2001-08-02', '393-527-2121', '4839 Cedar Ln, San Jose, TK 26332', NULL),
+(18, '1956-07-04', '605-489-1000', '4671 Main St, San Antonio, ED 18292', NULL),
+(19, '1992-12-23', '962-607-6375', '3587 Oak Ave, San Antonio, CA 36838', NULL),
+(20, '1953-11-17', '458-463-4929', '9683 Maple Dr, Chicago, FC 22305', NULL),
+(21, '1959-09-09', '760-495-1567', '9206 Birch Way, New York, GY 96901', NULL),
+(22, '1994-03-04', '559-818-6175', '9414 Maple Dr, Phoenix, IZ 40368', NULL),
+(23, '1945-07-19', '742-327-8911', '434 Birch Way, New York, UX 73461', NULL),
+(24, '1994-03-31', '840-579-3820', '3401 Main St, New York, YM 16980', NULL),
+(25, '1960-02-27', '647-447-4642', '5549 Elm St, San Antonio, QI 56680', NULL),
+(26, '1988-03-09', '261-854-2732', '2668 Elm St, San Diego, UF 46852', NULL),
+(27, '1991-11-29', '230-248-9791', '9042 Maple Dr, New York, BT 17907', NULL),
+(28, '1971-04-20', '845-640-4438', '1873 Willow Blvd, Chicago, RU 25371', NULL),
+(29, '1989-09-06', '567-537-7290', '9390 Main St, Dallas, GY 31847', NULL),
+(30, '1961-12-23', '737-955-3665', '2340 Spruce Ct, Chicago, WG 99598', NULL),
+(31, '1987-12-25', '270-241-4901', '5732 Maple Dr, Chicago, IZ 88997', NULL),
+(32, '1974-11-20', '330-394-7163', '9236 Willow Blvd, Los Angeles, FN 53458', NULL),
+(33, '1979-04-28', '706-557-1511', '8506 Cedar Ln, Chicago, YD 58957', NULL),
+(34, '1978-01-29', '549-860-7065', '7758 Elm St, Los Angeles, PD 90673', NULL),
+(35, '1982-01-12', '476-499-5115', '1768 Cedar Ln, Chicago, CX 44184', NULL),
+(36, '1966-06-10', '899-230-3117', '871 Willow Blvd, San Diego, BD 20530', NULL),
+(37, '1966-02-05', '536-462-5257', '1533 Pine Rd, Dallas, WN 29276', NULL),
+(38, '2007-04-21', '446-253-3894', '513 Elm St, Houston, BO 81343', NULL),
+(39, '1963-02-17', '257-899-7200', '5285 Cedar Ln, San Jose, DY 61113', NULL),
+(40, '1953-08-04', '660-696-1356', '6596 Spruce Ct, San Diego, NQ 12569', NULL),
+(41, '1992-12-11', '682-235-2807', '6795 Pine Rd, Houston, QU 27293', NULL),
+(42, '1989-04-09', '593-848-1220', '1703 Birch Way, San Jose, QP 23810', NULL),
+(43, '1965-07-16', '387-805-5371', '6927 Pine Rd, Phoenix, WI 83921', NULL),
+(44, '1995-05-31', '721-269-3654', '9177 Cedar Ln, New York, WP 49160', NULL),
+(45, '1949-01-01', '883-976-1042', '3057 Main St, Phoenix, YL 70444', NULL),
+(46, '1981-03-14', '695-698-3904', '6085 Willow Blvd, Dallas, TM 75510', NULL),
+(47, '1980-11-12', '543-760-9879', '2081 Pine Rd, San Diego, YH 87602', NULL),
+(48, '1972-11-14', '697-430-3948', '679 Oak Ave, Philadelphia, EL 97076', NULL),
+(49, '1946-12-25', '776-433-6162', '7891 Willow Blvd, Los Angeles, JS 40054', NULL),
+(50, '1963-11-16', '933-627-1821', '5031 Main St, Phoenix, QD 39996', NULL),
+(51, '1982-03-26', '553-905-4117', '8418 Maple Dr, San Jose, YZ 96898', NULL),
+(52, '1948-01-22', '755-735-6549', '6993 Willow Blvd, Los Angeles, GA 13641', NULL),
+(53, '2000-05-11', '545-625-4129', '4756 Magnolia Ave, San Jose, DN 57750', NULL),
+(54, '2000-07-31', '278-328-1695', '5731 Oak Ave, Dallas, NH 33541', NULL),
+(55, '1964-07-04', '230-776-9313', '348 Birch Way, Philadelphia, IT 56975', NULL),
+(56, '1948-09-13', '788-623-8923', '539 Birch Way, San Diego, PT 62537', NULL),
+(57, '1980-06-05', '765-968-6221', '2894 Main St, Chicago, BM 26728', NULL),
+(58, '2002-06-10', '851-851-4572', '9965 Spruce Ct, Houston, LS 16299', NULL),
+(59, '1949-07-14', '304-592-9519', '6475 Oak Ave, Dallas, YX 54697', NULL),
+(60, '1962-10-31', '731-338-9041', '7603 Pine Rd, Chicago, EW 34865', NULL),
+(61, '1999-02-10', '789-588-2003', '9121 Oak Ave, Houston, PO 32678', NULL),
+(62, '1965-08-26', '959-308-2059', '8566 Maple Dr, Houston, YV 17122', NULL),
+(63, '1968-12-02', '336-943-9994', '5719 Elm St, Chicago, YH 73036', NULL),
+(65, '1999-12-22', '777-283-8895', '4284 Pine Rd, San Diego, TH 14394', NULL),
+(66, '1985-08-04', '241-291-8023', '9243 Spruce Ct, San Diego, UB 99239', NULL),
+(67, '1958-03-06', '932-282-8057', '8811 Elm St, Los Angeles, TN 26658', NULL),
+(68, '1997-06-05', '396-915-8989', '103 Maple Dr, Dallas, KW 27164', NULL),
+(69, '2003-12-11', '604-562-8029', '1009 Oak Ave, Philadelphia, ZI 44044', NULL),
+(70, '1946-04-25', '416-951-3315', '1953 Oak Ave, San Antonio, FX 91561', NULL),
+(71, '1961-03-31', '349-497-9164', '5111 Willow Blvd, San Jose, VK 21618', NULL),
+(72, '2004-06-13', '539-985-2604', '9166 Cedar Ln, Philadelphia, NR 81974', NULL),
+(73, '1965-04-28', '526-909-3241', '7351 Pine Rd, San Antonio, KE 49539', NULL),
+(74, '1952-11-28', '400-740-8729', '4845 Oak Ave, Houston, QG 28826', NULL),
+(75, '1946-10-21', '880-337-7223', '432 Oak Ave, Houston, MQ 73529', NULL),
+(76, '1947-11-05', '608-397-8225', '7168 Maple Dr, New York, DB 11228', NULL),
+(78, '2006-04-22', '567-299-9600', '3556 Main St, San Diego, YF 26749', NULL),
+(79, '1989-04-08', '521-979-6632', '9743 Main St, New York, BG 29065', NULL),
+(80, '1998-04-24', '501-487-7674', '5037 Willow Blvd, Dallas, QY 10846', NULL),
+(81, '1973-12-20', '646-979-9923', '7842 Main St, Los Angeles, XI 21203', NULL),
+(82, '1994-05-04', '977-854-7350', '8905 Willow Blvd, Los Angeles, GM 12646', NULL),
+(83, '1956-09-01', '907-471-8389', '6009 Maple Dr, Houston, FL 15524', NULL),
+(84, '1965-11-02', '880-258-5959', '5046 Magnolia Ave, Chicago, UH 66178', NULL),
+(85, '1957-03-24', '400-767-5140', '670 Birch Way, Phoenix, OB 43631', NULL),
+(86, '1957-10-10', '489-634-4137', '282 Magnolia Ave, Phoenix, KH 20440', NULL),
+(87, '2000-07-28', '985-285-8328', '8003 Spruce Ct, Chicago, XB 69131', NULL),
+(88, '1988-03-16', '590-666-3002', '5506 Willow Blvd, Houston, QR 67677', NULL),
+(89, '1951-08-23', '296-442-8949', '5825 Maple Dr, Houston, UM 58536', NULL),
+(90, '1999-12-10', '456-209-8229', '1421 Main St, San Antonio, GQ 54834', NULL),
+(91, '1945-06-27', '632-462-7474', '3993 Birch Way, Los Angeles, PB 99937', NULL),
+(92, '1952-11-04', '413-262-9051', '4575 Oak Ave, Phoenix, BJ 48880', NULL),
+(93, '1982-12-26', '870-554-6694', '9804 Oak Ave, Houston, ID 38565', NULL),
+(94, '1968-06-24', '340-715-7809', '4080 Spruce Ct, Phoenix, AD 39874', NULL),
+(95, '1970-09-29', '399-967-5402', '3579 Elm St, Phoenix, MT 71835', NULL),
+(96, '1982-01-13', '508-527-2841', '3373 Pine Rd, Chicago, KG 42373', NULL),
+(97, '1988-07-14', '393-466-9629', '4062 Pine Rd, Philadelphia, TF 41991', NULL),
+(98, '1959-11-06', '435-368-9663', '2006 Willow Blvd, Chicago, WO 99141', NULL),
+(99, '1954-07-26', '298-407-3611', '7596 Elm St, Los Angeles, BZ 78304', NULL),
+(100, '1968-01-30', '280-882-9617', '5999 Oak Ave, Dallas, IU 89814', NULL),
+(101, '1995-06-25', '761-815-1035', '2992 Willow Blvd, Dallas, PG 58695', NULL),
+(102, '2000-12-24', '900-345-6912', '1610 Magnolia Ave, San Diego, TU 29699', NULL),
+(103, '1977-01-12', '330-716-2463', '4584 Oak Ave, Dallas, FY 61384', NULL),
+(104, '1958-07-25', '382-325-8980', '5275 Main St, Los Angeles, RU 29255', NULL),
+(105, '1961-12-07', '216-303-3019', '5437 Elm St, Phoenix, TR 35148', NULL);
 
 -- --------------------------------------------------------
 
@@ -732,7 +1005,7 @@ CREATE TABLE `user_otp` (
   `user_id` int(11) NOT NULL,
   `otp_code` varchar(10) NOT NULL,
   `otp_time` datetime DEFAULT current_timestamp(),
-  `purpose` enum('payment','two-factor','password_reset','verify_email') NOT NULL,
+  `purpose` enum('bkash_payment','two-factor','password_reset','verify_email','card_payment') NOT NULL,
   `otp_attempts` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -741,12 +1014,41 @@ CREATE TABLE `user_otp` (
 --
 
 INSERT INTO `user_otp` (`id`, `user_id`, `otp_code`, `otp_time`, `purpose`, `otp_attempts`) VALUES
-(3, 4, '140327', '2025-06-17 16:23:25', 'payment', 0),
+(3, 4, '140327', '2025-06-17 16:23:25', '', 0),
 (4, 4, '959334', '2025-06-17 16:28:27', 'password_reset', 0),
 (5, 4, '914637', '2025-06-17 16:30:53', 'password_reset', 0),
 (7, 4, '226963', '2025-06-17 17:54:03', 'two-factor', 0),
 (8, 4, '114695', '2025-06-17 17:59:35', 'two-factor', 1),
-(9, 4, '634445', '2025-06-22 00:38:45', 'password_reset', 1);
+(9, 4, '634445', '2025-06-22 00:38:45', 'password_reset', 1),
+(10, 4, '345331', '2025-06-24 01:09:37', '', 0),
+(11, 4, '289175', '2025-06-24 01:10:02', '', 0),
+(12, 4, '926242', '2025-06-24 01:37:43', 'bkash_payment', 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_payment_methods`
+--
+
+CREATE TABLE `user_payment_methods` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `card_type` enum('visa','mastercard','amex','discover') NOT NULL DEFAULT 'visa',
+  `card_number` varchar(20) NOT NULL,
+  `card_name` varchar(100) NOT NULL,
+  `expiry_date` varchar(10) NOT NULL,
+  `cvv` varchar(4) NOT NULL,
+  `is_default` tinyint(1) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `user_payment_methods`
+--
+
+INSERT INTO `user_payment_methods` (`id`, `user_id`, `card_type`, `card_number`, `card_name`, `expiry_date`, `cvv`, `is_default`, `created_at`, `updated_at`) VALUES
+(1, 4, 'visa', '1122 4554 5225 5332', 'Ashikur', '12/45', '123', 0, '2025-06-23 22:42:47', '2025-06-23 22:42:47');
 
 -- --------------------------------------------------------
 
@@ -760,18 +1062,20 @@ CREATE TABLE `user_subscriptions` (
   `subscription_plan_id` int(11) NOT NULL,
   `start_date` datetime DEFAULT current_timestamp(),
   `end_date` datetime NOT NULL,
-  `status` enum('active','expired','cancelled') DEFAULT 'active',
+  `status` enum('active','expired','cancelled','pending') DEFAULT 'pending',
+  `renew` int(11) NOT NULL DEFAULT 0,
   `auto_renew` tinyint(1) DEFAULT 0,
-  `available_audio` int(11) DEFAULT NULL,
-  `available_rent_book` int(11) DEFAULT NULL
+  `available_audio` int(11) NOT NULL,
+  `available_rent_book` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `user_subscriptions`
 --
 
-INSERT INTO `user_subscriptions` (`user_subscription_id`, `user_id`, `subscription_plan_id`, `start_date`, `end_date`, `status`, `auto_renew`, `available_audio`, `available_rent_book`) VALUES
-(1, 4, 1, '2025-06-21 10:50:23', '2025-06-21 06:50:41', 'active', 0, 10, 10);
+INSERT INTO `user_subscriptions` (`user_subscription_id`, `user_id`, `subscription_plan_id`, `start_date`, `end_date`, `status`, `renew`, `auto_renew`, `available_audio`, `available_rent_book`) VALUES
+(1, 4, 1, '2025-06-21 10:50:23', '2025-06-21 06:50:41', 'active', 0, 0, 10, 10),
+(3, 4, 2, '2025-06-23 15:31:56', '2025-08-13 15:31:41', 'active', 0, 0, 20, 20);
 
 -- --------------------------------------------------------
 
@@ -821,10 +1125,8 @@ CREATE TABLE `wishlist` (
 --
 
 INSERT INTO `wishlist` (`id`, `user_id`, `book_id`, `added_at`) VALUES
-(1, 4, 6, '2025-06-18 21:41:09'),
-(2, 4, 4, '2025-06-18 21:43:13'),
-(3, 4, 5, '2025-06-19 01:35:07'),
-(4, 4, 7, '2025-06-19 02:11:36');
+(6, 4, 8, '2025-06-23 17:24:08'),
+(7, 4, 6, '2025-06-23 17:24:17');
 
 -- --------------------------------------------------------
 
@@ -847,18 +1149,17 @@ CREATE TABLE `writers` (
 --
 
 INSERT INTO `writers` (`writer_id`, `name`, `email`, `bio`, `address`, `image_url`, `created_at`) VALUES
-(1, 'J.K. Rowling', 'jkrowling@example.com', 'British author, best known for the Harry Potter series.', 'Edinburgh, UK', 'https://example.com/images/jkrowling.jpg', '2025-06-05 13:00:51'),
-(2, 'George R.R. Martin', 'grrmartin@example.com', 'American novelist and creator of \"A Song of Ice and Fire\".', 'Bayonne, NJ, USA', 'https://example.com/images/grrmartin.jpg', '2025-06-05 13:00:51'),
-(3, 'Rabindranath Tagore', 'tagore@example.com', 'Nobel laureate poet, musician, and artist from Bengal.', 'Kolkata, India', 'https://example.com/images/tagore.jpg', '2025-06-05 13:00:51'),
-(4, 'Humayun Ahmed', 'humayunahmed@example.com', 'Popular Bangladeshi author, dramatist, and filmmaker.', 'Dhaka, Bangladesh', 'https://example.com/images/humayunahmed.jpg', '2025-06-05 13:00:51'),
-(5, 'Agatha Christie', 'agathachristie@example.com', 'Renowned British mystery writer and creator of Hercule Poirot.', 'Wallingford, UK', 'https://example.com/images/agathachristie.jpg', '2025-06-05 13:00:51'),
-(6, 'Paulo Coelho', 'paulocoelho@example.com', 'Brazilian author of \"The Alchemist\" and other spiritual novels.', 'Rio de Janeiro, Brazil', 'https://example.com/images/paulocoelho.jpg', '2025-06-05 13:00:51'),
-(21, 'Kazi Nazrul Islam', 'nazrul@example.com', 'National poet of Bangladesh, known for his revolutionary and spiritual writings.', 'Churulia, West Bengal, India', 'https://example.com/images/nazrul.jpg', '2025-06-05 13:02:08'),
-(22, 'Humayun Ahmed', 'humayun@example.com', 'Celebrated Bangladeshi author and filmmaker. Known for Himu and Misir Ali series.', 'Dhanmondi, Dhaka, Bangladesh', 'https://example.com/images/humayun.jpg', '2025-06-05 13:02:08'),
-(23, 'Sarat Chandra Chattopadhyay', 'sarat@example.com', 'Famous Bengali novelist known for \"Devdas\", \"Parineeta\", and more.', 'Debanandapur, West Bengal, India', 'https://example.com/images/sarat.jpg', '2025-06-05 13:02:08'),
-(24, 'Sunil Gangopadhyay', 'sunil@example.com', 'Modern Bengali poet and novelist, known for \"Sei Somoy\" and \"Nikhilesh\" series.', 'Kolkata, India', 'https://example.com/images/sunil.jpg', '2025-06-05 13:02:08'),
-(25, 'Syed Shamsul Haq', 'syedshamsulhaq@example.com', 'Bangladeshi writer, poet, and playwright. Noted for his contributions to Bengali literature.', 'Kurigram, Bangladesh', 'https://example.com/images/syed.jpg', '2025-06-05 13:02:08'),
-(26, 'Begum Rokeya', 'rokeya@example.com', 'Pioneer of women’s education and rights in Bengal. Known for \"Sultana’s Dream\".', 'Rangpur, Bangladesh', 'https://example.com/images/rokeya.jpg', '2025-06-05 13:02:08');
+(1, 'J.K. Rowling', 'jkrowling@example.com', 'British author, best known for the Harry Potter series.', 'Edinburgh, UK', 'assets\\writers_profile\\J.K.Rowling.jpg', '2025-06-05 13:00:51'),
+(2, 'George R.R. Martin', 'grrmartin@example.com', 'American novelist and creator of \"A Song of Ice and Fire\".', 'Bayonne, NJ, USA', 'assets\\writers_profile\\George R.R. Martin.jpg', '2025-06-05 13:00:51'),
+(3, 'Rabindranath Tagore', 'tagore@example.com', 'Nobel laureate poet, musician, and artist from Bengal.', 'Kolkata, India', 'assets\\writers_profile\\Rabindranath Tagore.jpg', '2025-06-05 13:00:51'),
+(4, 'Humayun Ahmed', 'humayunahmed@example.com', 'Popular Bangladeshi author, dramatist, and filmmaker.', 'Dhaka, Bangladesh', 'assets\\writers_profile\\Humayun Ahmed.jpg', '2025-06-05 13:00:51'),
+(5, 'Agatha Christie', 'agathachristie@example.com', 'Renowned British mystery writer and creator of Hercule Poirot.', 'Wallingford, UK', 'assets\\writers_profile\\Agatha Christie.jpg', '2025-06-05 13:00:51'),
+(6, 'Paulo Coelho', 'paulocoelho@example.com', 'Brazilian author of \"The Alchemist\" and other spiritual novels.', 'Rio de Janeiro, Brazil', 'assets\\writers_profile\\Paulo Coelho.jpg', '2025-06-05 13:00:51'),
+(21, 'Kazi Nazrul Islam', 'nazrul@example.com', 'National poet of Bangladesh, known for his revolutionary and spiritual writings.', 'Churulia, West Bengal, India', 'assets\\writers_profile\\IslamKaziNazrul.jpg', '2025-06-05 13:02:08'),
+(23, 'Sarat Chandra Chattopadhyay', 'sarat@example.com', 'Famous Bengali novelist known for \"Devdas\", \"Parineeta\", and more.', 'Debanandapur, West Bengal, India', 'assets\\writers_profile\\Sarat Chandra Chattopadhyay.jpg', '2025-06-05 13:02:08'),
+(24, 'Sunil Gangopadhyay', 'sunil@example.com', 'Modern Bengali poet and novelist, known for \"Sei Somoy\" and \"Nikhilesh\" series.', 'Kolkata, India', 'assets\\writers_profile\\Sunil Gangopadhyay.jpg', '2025-06-05 13:02:08'),
+(26, 'Begum Rokeya', 'rokeya@example.com', 'Pioneer of women’s education and rights in Bengal. Known for \"Sultana’s Dream\".', 'Rangpur, Bangladesh', 'assets\\writers_profile\\Begum Rokeya.jpg', '2025-06-05 13:02:08'),
+(34, 'Ian Lumsden', 'ianlumsden@gmail.com', 'Ian Lumsden is a Canadian author and academic known for his scholarly works on art history, Canadian culture, and LGBTQ+ studies. He has contributed significantly to the understanding of Canadian art and the experiences of homosexual communities in Latin America.', 'New Brunswick,America', 'assets\\writers_profile\\th.jpg', '2025-06-23 09:27:05');
 
 --
 -- Indexes for dumped tables
@@ -1065,6 +1366,13 @@ ALTER TABLE `user_activities`
   ADD KEY `userauthentication_fk` (`user_id`);
 
 --
+-- Indexes for table `user_billing_address`
+--
+ALTER TABLE `user_billing_address`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `user_info`
 --
 ALTER TABLE `user_info`
@@ -1076,6 +1384,13 @@ ALTER TABLE `user_info`
 ALTER TABLE `user_otp`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_user_otp_user` (`user_id`);
+
+--
+-- Indexes for table `user_payment_methods`
+--
+ALTER TABLE `user_payment_methods`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_payment_method_user` (`user_id`);
 
 --
 -- Indexes for table `user_subscriptions`
@@ -1142,37 +1457,37 @@ ALTER TABLE `audiobooks`
 -- AUTO_INCREMENT for table `books`
 --
 ALTER TABLE `books`
-  MODIFY `book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `book_categories`
 --
 ALTER TABLE `book_categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `book_genres`
 --
 ALTER TABLE `book_genres`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `book_languages`
 --
 ALTER TABLE `book_languages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `book_writers`
 --
 ALTER TABLE `book_writers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `categories`
@@ -1232,7 +1547,7 @@ ALTER TABLE `partner_books`
 -- AUTO_INCREMENT for table `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `rent_books`
@@ -1250,13 +1565,13 @@ ALTER TABLE `reviews`
 -- AUTO_INCREMENT for table `subscription_orders`
 --
 ALTER TABLE `subscription_orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT for table `subscription_plans`
 --
 ALTER TABLE `subscription_plans`
-  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `plan_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `subscription_transactions`
@@ -1274,25 +1589,37 @@ ALTER TABLE `transactions`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
 
 --
 -- AUTO_INCREMENT for table `user_activities`
 --
 ALTER TABLE `user_activities`
-  MODIFY `auth_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `auth_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+
+--
+-- AUTO_INCREMENT for table `user_billing_address`
+--
+ALTER TABLE `user_billing_address`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `user_otp`
 --
 ALTER TABLE `user_otp`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT for table `user_payment_methods`
+--
+ALTER TABLE `user_payment_methods`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `user_subscriptions`
 --
 ALTER TABLE `user_subscriptions`
-  MODIFY `user_subscription_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `user_subscription_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `user_subscription_audiobook_access`
@@ -1310,13 +1637,13 @@ ALTER TABLE `user_subscription_rent_book_access`
 -- AUTO_INCREMENT for table `wishlist`
 --
 ALTER TABLE `wishlist`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `writers`
 --
 ALTER TABLE `writers`
-  MODIFY `writer_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `writer_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- Constraints for dumped tables
@@ -1437,6 +1764,12 @@ ALTER TABLE `user_activities`
   ADD CONSTRAINT `userauthentication_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `user_billing_address`
+--
+ALTER TABLE `user_billing_address`
+  ADD CONSTRAINT `fk_billing_address_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `user_info`
 --
 ALTER TABLE `user_info`
@@ -1447,6 +1780,12 @@ ALTER TABLE `user_info`
 --
 ALTER TABLE `user_otp`
   ADD CONSTRAINT `fk_user_otp_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `user_payment_methods`
+--
+ALTER TABLE `user_payment_methods`
+  ADD CONSTRAINT `fk_payment_method_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `user_subscriptions`

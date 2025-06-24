@@ -1,0 +1,4 @@
+2025-06-24 03:01:54,741 - ERROR - Unexpected error occurred: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)
+2025-06-24 03:01:54,743 - ERROR - Failed to send OTP email
+2025-06-24 08:17:07,324 - ERROR - Unexpected error occurred: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)
+2025-06-24 08:17:07,325 - ERROR - Failed to send OTP email

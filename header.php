@@ -41,11 +41,11 @@ if (isset($_SESSION['user_id'])) {
                 </button>
                 
                 <ul class="nav-links">
-                    <li><a href="#"><i class="fas fa-key"></i> <span>Rent</span></a></li>
+                    <li><a href="#"><i class="fas fa-book"></i> <span>Rent</span></a></li>
                     <li><a href="#"><i class="fas fa-music"></i> <span>Audio</span></a></li>
-                    <li><a href="#"><i class="fas fa-user"></i> <span>Profile</span></a></li>
+                    <li><a href="/BookHeaven2.0/php/profile.php"><i class="fas fa-user"></i> <span>Profile</span></a></li>
                     <li><a href="/BookHeaven2.0/php/cart.php"><i class="fas fa-shopping-cart"></i> <span class="cart-count"><?php echo $cart_count; ?></span></a></li>
-                    <li><a href="#"><i class="fas fa-bell"></i> <span>Notification</span></a></li>
+                    <li><a href="#"><i class="fas fa-handshake"></i> <span>Partner</span></a></li>
                 </ul>
                 <div class="nav-buttons">
                     <button class="btn btn-outline" id="authBtn">

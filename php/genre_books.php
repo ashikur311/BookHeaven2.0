@@ -1,6 +1,14 @@
 <?php
 require_once '../db_connection.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
+// Redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+  header("Location: authentication.php");
+  exit();
+}
 
 // Handle adding to cart
 if (isset($_POST['action']) && $_POST['action'] == 'add' && isset($_POST['book_id'])) {
@@ -88,7 +96,362 @@ $books_result = mysqli_query($conn, $books_query) or die(mysqli_error($conn));
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/BookHeaven2.0/css/genre_books.css">
+    <!-- <link rel="stylesheet" href="/BookHeaven2.0/css/genre_books.css"> -->
+<style>
+:root {
+  --primary-color: #57abd2;
+  --secondary-color: #f8f5fc;
+  --accent-color: rgb(223, 219, 227);
+  --text-color: #333;
+  --light-purple: #e6d9f2;
+  --dark-text: #212529;
+  --light-text: #f8f9fa;
+  --card-bg: #f8f9fa;
+  --aside-bg: #f0f2f5;
+  --nav-hover: #e0e0e0;
+  --border-color: #dee2e6;
+  --footer-bg: #343a40;
+  --footer-text: #f8f9fa;
+  --badge-bg: #6c757d;
+  --badge-text: #ffffff;
+}
+
+.dark-mode {
+  --primary-color: #57abd2;
+  --secondary-color: #2d3748;
+  --accent-color: #4a5568;
+  --text-color: #f8f9fa;
+  --light-purple: #4a5568;
+  --dark-text: #f8f9fa;
+  --light-text: #212529;
+  --card-bg: #1a202c;
+  --aside-bg: #1a202c;
+  --nav-hover: #4a5568;
+  --border-color: #4a5568;
+  --footer-bg: #1a202c;
+  --badge-bg: #4a5568;
+  --badge-text: #f8f9fa;
+}
+
+body {
+  font-family: "Nunito", sans-serif;
+  color: var(--dark-text);
+  background-color: var(--secondary-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.genre-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  color: var(--light-text);
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s;
+}
+
+.genre-container {
+  background: var(--card-bg);
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  margin-bottom: 3rem;
+  transition: background-color 0.3s;
+}
+
+.genre-sidebar {
+  background: var(--aside-bg);
+  padding: 1.5rem;
+  height: 100%;
+  border-right: 1px solid var(--border-color);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.genre-sidebar h3 {
+  color: var(--primary-color);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+  font-weight: 700;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+.genre-list {
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Updated block-style genre items */
+.genre-item {
+  display: block;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  color: var(--dark-text);
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.genre-item > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Fix for book count visibility */
+.genre-item .badge {
+  background-color: var(--badge-bg);
+  color: var(--badge-text) !important; /* Force text color */
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+
+.genre-item:hover {
+  background-color: var(--light-purple);
+}
+
+.genre-item.active {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  border-color: var(--primary-color);
+}
+
+.genre-item.active .badge {
+  background-color: var(--light-text);
+  color: var(--primary-color) !important;
+}
+
+.genre-content {
+  padding: 2rem;
+  background-color: var(--card-bg);
+  transition: background-color 0.3s;
+}
+
+.genre-title {
+  color: var(--primary-color);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+  font-weight: 700;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+/* Fix for book title visibility in dark mode */
+.book-title {
+  font-weight: 700;
+  color: var(--dark-text) !important; /* Force dark text */
+  margin-bottom: 0.5rem;
+  height: 60px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.book-title a {
+  color: inherit !important; /* Force inheritance */
+  text-decoration: none;
+}
+
+.book-title a:hover {
+  color: var(--primary-color) !important;
+}
+
+.book-card {
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: 100%;
+  background: var(--card-bg);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.book-card-img-container {
+  position: relative;
+  overflow: hidden;
+  height: 250px;
+}
+
+.book-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.book-card:hover .book-card-img {
+  transform: scale(1.05);
+}
+
+.book-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.book-card-body {
+  padding: 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-writer {
+  color: var(--text-color);
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  transition: color 0.3s;
+}
+
+.book-writer i {
+  color: var(--primary-color);
+}
+
+.book-rating {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.rating-stars {
+  color: #ffc107;
+  margin-right: 0.5rem;
+}
+
+.rating-value {
+  font-weight: 600;
+  color: var(--dark-text);
+  transition: color 0.3s;
+}
+
+.book-price {
+  font-weight: 700;
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  margin-bottom: 1.25rem;
+  transition: color 0.3s;
+}
+
+.btn-add-to-cart {
+  background-color: var(--primary-color);
+  border: none;
+  width: 100%;
+  transition: all 0.3s ease;
+  margin-top: auto;
+  font-weight: 600;
+  padding: 0.5rem;
+  color: var(--light-text) !important;
+}
+
+.btn-add-to-cart:hover {
+  background-color: var(--accent-color);
+  transform: translateY(-2px);
+}
+
+.btn-add-to-cart.disabled {
+  background-color: var(--accent-color);
+  opacity: 0.8;
+}
+
+.no-books {
+  text-align: center;
+  padding: 3rem;
+  background-color: var(--aside-bg);
+  border-radius: 10px;
+  color: var(--dark-text);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1199.98px) {
+  .book-card-img-container {
+    height: 220px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .book-card-img-container {
+    height: 200px;
+  }
+
+  .book-title {
+    height: 54px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .genre-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .genre-list {
+    max-height: 200px;
+    margin-bottom: 2rem;
+  }
+
+  .book-card-img-container {
+    height: 180px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .genre-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .genre-content {
+    padding: 1rem;
+  }
+
+  .book-card-img-container {
+    height: 160px;
+  }
+
+  .book-title {
+    font-size: 1rem;
+    height: 48px;
+  }
+
+  .book-writer {
+    font-size: 0.8rem;
+  }
+
+  .book-price {
+    font-size: 1.1rem;
+  }
+
+  .book-card-body {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .book-card-img-container {
+    height: 140px;
+  }
+
+  .genre-header {
+    padding: 1.5rem 0;
+  }
+
+  .genre-sidebar {
+    padding: 1rem;
+  }
+}
+</style>
 </head>
 <body>
     <?php include_once("../header.php") ?>

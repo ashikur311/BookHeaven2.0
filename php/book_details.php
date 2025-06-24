@@ -1,6 +1,9 @@
 <?php
 // Start session and include database connection
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
 require_once('../db_connection.php');
 
 // Get book ID from URL parameter
@@ -83,7 +86,7 @@ if ($book_id > 0) {
             LEFT JOIN user_info ui ON u.user_id = ui.user_id
             WHERE r.book_id = ?
             ORDER BY r.created_at DESC
-            LIMIT 5
+            LIMIT 8
         ");
         $stmt->bind_param("i", $book_id);
         $stmt->execute();
@@ -361,7 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if (!empty($writers)): ?>
                         <div class="author-section">
                             <?php $main_writer = $writers[0]; ?>
-                            <img src="<?php echo htmlspecialchars($main_writer['image_url'] ?? 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'); ?>"
+                            <img src="/BookHeaven2.0/<?php echo htmlspecialchars($main_writer['image_url'] ?? 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'); ?>"
                                 alt="<?php echo htmlspecialchars($main_writer['name']); ?>" class="author-image">
                             <div class="author-info">
                                 <h2 class="author-name"><?php echo htmlspecialchars($main_writer['name']); ?></h2>
@@ -448,8 +451,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php foreach ($reviews as $review): ?>
                                 <div class="review-item">
                                     <div class="review-header">
-                                        <img src="<?php echo htmlspecialchars($review['userimageurl'] ?? 'https://randomuser.me/api/portraits/women/43.jpg'); ?>"
+                                        <img src="/BookHeaven2.0/<?php echo htmlspecialchars($review['userimageurl'] ?? 'https://randomuser.me/api/portraits/women/43.jpg'); ?>"
                                             alt="<?php echo htmlspecialchars($review['username']); ?>" class="reviewer-image">
+                
                                         <span class="reviewer-name"><?php echo htmlspecialchars($review['username']); ?></span>
                                         <span
                                             class="review-date"><?php echo date('F j, Y', strtotime($review['created_at'])); ?></span>
@@ -511,7 +515,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php foreach ($questions as $question): ?>
                                 <div class="qa-item">
                                     <div class="qa-header">
-                                        <img src="<?php echo htmlspecialchars($question['questioner_image'] ?? 'https://randomuser.me/api/portraits/women/68.jpg'); ?>"
+                                        <img src="BookHeaven2.0/<?php echo htmlspecialchars($question['questioner_image'] ?? 'https://randomuser.me/api/portraits/women/68.jpg'); ?>"
                                             alt="<?php echo htmlspecialchars($question['questioner_name']); ?>"
                                             class="questioner-image">
                                         <span
@@ -526,7 +530,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <div class="answer-container">
                                             <span class="answer-label">ANSWER</span>
                                             <div class="qa-header">
-                                                <img src="<?php echo htmlspecialchars($question['answerer_image'] ?? 'https://randomuser.me/api/portraits/men/75.jpg'); ?>"
+                                                <img src="BookHeaven2.0/<?php echo htmlspecialchars($question['answerer_image'] ?? 'https://randomuser.me/api/portraits/men/75.jpg'); ?>"
                                                     alt="<?php echo htmlspecialchars($question['answerer_name']); ?>"
                                                     class="questioner-image">
                                                 <span

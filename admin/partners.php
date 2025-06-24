@@ -446,11 +446,11 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         <aside class="admin_sidebar">
             <nav class="admin_sidebar_nav">
                 <ul>
-                    <li><a href="admin_dashboard.php" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    <li><a href="admin_dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                     </li>
                     <li><a href="add.php"><i class="fas fa-plus-circle"></i> Add</a></li>
                     <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
-                    <li><a href="partners.php"><i class="fas fa-handshake"></i> Partners</a></li>
+                    <li><a href="partners.php"  class="active"><i class="fas fa-handshake"></i> Partners</a></li>
                     <li><a href="writers.php"><i class="fas fa-pen-fancy"></i> Writers</a></li>
                     <li><a href="books.php"><i class="fas fa-book"></i> Books</a></li>
                     <li><a href="audiobooks.php"><i class="fas fa-headphones"></i> Audio Books</a></li>

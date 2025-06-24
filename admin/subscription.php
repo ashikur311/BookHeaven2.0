@@ -389,7 +389,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <aside class="admin_sidebar">
       <nav class="admin_sidebar_nav">
         <ul>
-          <li><a href="admin_dashboard.php" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+          <li><a href="admin_dashboard.php" ><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
           <li><a href="add.php"><i class="fas fa-plus-circle"></i> Add</a></li>
           <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
           <li><a href="partners.php"><i class="fas fa-handshake"></i> Partners</a></li>
@@ -397,7 +397,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <li><a href="books.php"><i class="fas fa-book"></i> Books</a></li>
           <li><a href="audiobooks.php"><i class="fas fa-headphones"></i> Audio Books</a></li>
           <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
-          <li><a href="subscription.php"><i class="fas fa-star"></i> Subscription</a></li>
+          <li><a href="subscription.php" class="active"><i class="fas fa-star"></i> Subscription</a></li>
           <li><a href="events.php"><i class="fas fa-calendar-alt"></i> Events</a></li>
           <li><a href="community.php"><i class="fas fa-users"></i> Community</a></li>
           <li><a href="reports.php"><i class="fas fa-chart-bar"></i> Reports</a></li>

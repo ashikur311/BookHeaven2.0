@@ -1,35 +1,46 @@
 :root {
-  --primary-color: #4a6fa5;
-  --secondary-color: #166088;
-  --accent-color: #4fc3f7;
+  --primary-color: #57abd2;
+  --primary-dark: #3d8eb4;
+  --secondary-color: #f8f5fc;
+  --accent-color: rgb(223, 219, 227);
+  --text-color: #333;
+  --text-light: #666;
+  --light-purple: #e6d9f2;
+  --dark-text: #212529;
+  --light-text: #f8f9fa;
+  --card-bg: #ffffff;
+  --aside-bg: #f0f2f5;
+  --nav-hover: #e0e0e0;
   --success-color: #28a745;
   --warning-color: #ffc107;
   --danger-color: #dc3545;
-
-  /* Light mode colors */
-  --bg-color: #f5f5f5;
-  --text-color: #000000;
-  --card-bg: white;
-  --card-shadow: 0 2px 10px #e9e9e9;
-  --border-color: #ddd;
-  --hover-bg: #ffffff;
-  --even-row-bg: #f2f2f2;
-  --header-bg: var(--primary-color);
-  --header-text: white;
+  --border-color: #e0e0e0;
+  --hover-bg: #f5f5f5;
+  --even-row-bg: #f9f9f9;
+  --header-bg: #f0f0f0;
+  --header-text: #333;
+  --card-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-color: #1a1a1a;
-    --text-color: #e0e0e0;
-    --card-bg: rgb(239, 239, 239);
-    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    --border-color: #444;
-    --hover-bg: #383838;
-    --even-row-bg: #333;
-    --header-bg: rgb(0, 0, 0); /* Changed to black */
-    --header-text: #ffffff;
-  }
+.dark-mode {
+  --primary-color: #57abd2;
+  --primary-dark: #4a9bc1;
+  --secondary-color: #2d3748;
+  --accent-color: #4a5568;
+  --text-color: #f8f9fa;
+  --text-light: #a0aec0;
+  --light-purple: #4a5568;
+  --dark-text: #f8f9fa;
+  --light-text: #212529;
+  --card-bg: #1a202c;
+  --aside-bg: #1a202c;
+  --nav-hover: #4a5568;
+  --border-color: #4a5568;
+  --hover-bg: #2d3748;
+  --even-row-bg: #2d3748;
+  --header-bg: #1a202c;
+  --header-text: #f8f9fa;
+  --card-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -37,10 +48,11 @@
   padding: 0;
   box-sizing: border-box;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 body {
-  background-color: var(--bg-color);
+  background-color: var(--aside-bg);
   color: var(--text-color);
   line-height: 1.6;
 }
@@ -66,6 +78,9 @@ h2 {
   font-size: 1.5rem;
   border-bottom: 2px solid var(--accent-color);
   padding-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Current Plan Section */
@@ -89,8 +104,9 @@ td {
 }
 
 th {
-  background-color: #000; /* Changed to black */
-  color: white;
+  background-color: var(--header-bg);
+  color: var(--header-text);
+  font-weight: 600;
 }
 
 tr:nth-child(even) {
@@ -111,6 +127,29 @@ tr:hover {
   font-weight: bold;
 }
 
+.action-btn {
+  background-color: var(--success-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-btn:hover {
+  background-color: #218838;
+}
+
+.action-btn i {
+  font-size: 0.8rem;
+}
+
 /* Plans Grid */
 .plans-grid {
   display: grid;
@@ -127,23 +166,23 @@ tr:hover {
   display: flex;
   flex-direction: column;
   background-color: var(--card-bg);
+  position: relative;
 }
 
 .plan-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .plan-card.popular {
-  border: 2px solid var(--accent-color);
-  position: relative;
+  border: 2px solid var(--primary-color);
 }
 
 .popular-badge {
   position: absolute;
   top: -10px;
   right: 20px;
-  background-color: var(--accent-color);
+  background-color: var(--primary-color);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
@@ -153,8 +192,9 @@ tr:hover {
 
 .plan-name {
   font-size: 1.5rem;
-  color: var(--secondary-color);
+  color: var(--primary-color);
   margin-bottom: 0.5rem;
+  font-weight: 600;
 }
 
 .plan-price {
@@ -166,8 +206,8 @@ tr:hover {
 
 .plan-price span {
   font-size: 1rem;
-  color: var(--text-color);
-  opacity: 0.8;
+  color: var(--text-light);
+  font-weight: normal;
 }
 
 .plan-features {
@@ -176,24 +216,26 @@ tr:hover {
 }
 
 .plan-feature {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   display: flex;
   align-items: center;
+  color: var(--text-color);
 }
 
 .plan-feature i {
-  margin-right: 0.5rem;
-  color: var(--accent-color);
+  margin-right: 0.75rem;
+  color: var(--primary-color);
+  min-width: 20px;
 }
 
 .subscribe-btn {
   background-color: var(--primary-color);
   color: white;
   border: none;
-  padding: 0.5rem 1rem; /* Reduced button size */
-  border-radius: 4px;
+  padding: 0.75rem;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem; /* Reduced font size */
+  font-size: 1rem;
   font-weight: bold;
   transition: background-color 0.3s ease;
   width: 100%;
@@ -201,7 +243,7 @@ tr:hover {
 }
 
 .subscribe-btn:hover {
-  background-color: var(--secondary-color);
+  background-color: var(--primary-dark);
 }
 
 /* Modal */
@@ -236,12 +278,13 @@ tr:hover {
   font-size: 1.5rem;
   color: var(--primary-color);
   margin-bottom: 0.5rem;
+  font-weight: 600;
 }
 
 .modal-plan-price {
   font-size: 1.25rem;
   font-weight: bold;
-  color: var(--secondary-color);
+  color: var(--primary-color);
   margin-bottom: 1rem;
 }
 
@@ -253,12 +296,12 @@ tr:hover {
   margin-bottom: 0.75rem;
   display: flex;
   justify-content: space-between;
+  color: var(--text-color);
 }
 
 .modal-feature-label {
   font-weight: bold;
   color: var(--text-color);
-  opacity: 0.9;
 }
 
 .modal-actions {
@@ -268,22 +311,23 @@ tr:hover {
 }
 
 .modal-btn {
-  padding: 0.5rem 1rem; /* Reduced button size */
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem; /* Reduced font size */
+  font-size: 1rem;
   font-weight: bold;
   transition: all 0.3s ease;
 }
 
 .modal-btn-close {
-  background-color: red;
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
+  background-color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  color: white;
 }
 
 .modal-btn-close:hover {
-  background-color: orange;
+  background-color: #c82333;
+  border-color: #bd2130;
 }
 
 .modal-btn-confirm {
@@ -295,6 +339,15 @@ tr:hover {
 .modal-btn-confirm:hover {
   background-color: #218838;
   border-color: #1e7e34;
+}
+
+.no-plan {
+  color: var(--text-color);
+  font-size: 1.1rem;
+  padding: 1rem;
+  background-color: var(--even-row-bg);
+  border-radius: 6px;
+  border-left: 4px solid var(--warning-color);
 }
 
 /* Responsive adjustments */
@@ -310,5 +363,19 @@ tr:hover {
   th,
   td {
     padding: 8px 10px;
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 1.5rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .modal-btn {
+    width: 100%;
   }
 }

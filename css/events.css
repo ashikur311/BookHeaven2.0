@@ -5,24 +5,38 @@
   --primary-color: #4a6bff;
   --secondary-color: #f0f2f5;
   --border-color: #e0e0e0;
+  --success-color: #28a745;
+  --error-color: #dc3545;
+  --success-bg: #dff0d8;
+  --error-bg: #f2dede;
+  --link-color: #0066cc;
+  --countdown-bg: rgba(0, 0, 0, 0.7);
+  --countdown-text: #ffffff;
 }
 
 [data-theme="dark"] {
   --bg-color: #121212;
   --text-color: #e0e0e0;
-  --card-bg: #1e1e1e;
+  --card-bg: #2a2929;
   --primary-color: #5d8aff;
   --secondary-color: #2d2d2d;
   --border-color: #333333;
+  --success-color: #48bb78;
+  --error-color: #f56565;
+  --success-bg: #2f855a;
+  --error-bg: #c53030;
+  --link-color: #63b3ed;
+  --countdown-bg: rgba(0, 0, 0, 0.7);
+  --countdown-text: #ffffff;
 }
 
+/* Layout remains completely unchanged */
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-color);
   margin: 0;
   padding: 0;
-  transition: background-color 0.3s, color 0.3s;
 }
 
 main {
@@ -31,9 +45,7 @@ main {
   margin: 0 auto;
 }
 
-h1,
-h2,
-h3 {
+h1, h2, h3 {
   color: var(--text-color);
 }
 
@@ -41,6 +53,7 @@ h3 {
   margin: 30px 0 20px;
   padding-bottom: 10px;
   border-bottom: 2px solid var(--primary-color);
+  color: var(--text-color);
 }
 
 .events-container {
@@ -78,6 +91,7 @@ h3 {
 .event-title {
   font-size: 1.2rem;
   margin: 0 0 10px;
+  color: var(--text-color);
 }
 
 .event-meta {
@@ -92,6 +106,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 5px;
+  color: var(--text-color);
 }
 
 .event-meta i {
@@ -108,6 +123,7 @@ h3 {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  color: var(--text-color);
 }
 
 .join-btn {
@@ -119,23 +135,23 @@ h3 {
   cursor: pointer;
   width: 100%;
   font-weight: bold;
-  transition: background-color 0.3s;
 }
 
 .join-btn:hover {
-  background-color: #3a5bef;
+  background-color: var(--primary-color);
+  opacity: 0.9;
 }
 
 .joined-btn {
-  background-color: #28a745;
+  background-color: var(--success-color);
 }
 
 .countdown {
   position: absolute;
   top: 15px;
   right: 15px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
+  background-color: var(--countdown-bg);
+  color: var(--countdown-text);
   padding: 5px 10px;
   border-radius: 5px;
   font-size: 0.8rem;
@@ -148,6 +164,71 @@ h3 {
   grid-column: 1 / -1;
   color: var(--text-color);
   opacity: 0.7;
+}
+
+.event-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.download-btn {
+  background-color: var(--success-color);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.download-btn:hover {
+  background-color: var(--success-color);
+  opacity: 0.9;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--link-color);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 10px;
+}
+
+.alert {
+  padding: 15px;
+  margin: 0 auto 20px;
+  border-radius: 4px;
+  max-width: 800px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.alert.success {
+  background-color: var(--success-bg);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
+}
+
+.alert.error {
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+}
+
+.alert .close-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 0 0 10px;
 }
 
 @media (max-width: 768px) {
@@ -168,96 +249,4 @@ h3 {
   .section-title {
     font-size: 1.3rem;
   }
-}
-/* Add to your events.css */
-.event-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.download-btn {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.download-btn:hover {
-    background-color: #45a049;
-}
-
-.btn-link {
-    background: none;
-    border: none;
-    color: #0066cc;
-    text-decoration: underline;
-    cursor: pointer;
-    padding: 0;
-    margin-left: 10px;
-}
-
-.alert {
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-}
-
-.alert.success {
-    background-color: #dff0d8;
-    color: #3c763d;
-}
-
-.alert.error {
-    background-color: #f2dede;
-    color: #a94442;
-}
-
-/* Add to your events.css */
-.alert {
-    padding: 15px;
-    margin: 0 auto 20px;
-    border-radius: 4px;
-    max-width: 800px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.alert.success {
-    background-color: #dff0d8;
-    color: #3c763d;
-    border: 1px solid #d6e9c6;
-}
-
-.alert.error {
-    background-color: #f2dede;
-    color: #a94442;
-    border: 1px solid #ebccd1;
-}
-
-.alert .close-btn {
-    background: none;
-    border: none;
-    color: inherit;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 0 0 0 10px;
-}
-
-.btn-link {
-    background: none;
-    border: none;
-    color: #0066cc;
-    text-decoration: underline;
-    cursor: pointer;
-    padding: 0;
-    margin-left: 10px;
 }
