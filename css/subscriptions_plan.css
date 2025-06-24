@@ -150,6 +150,19 @@ tr:hover {
   font-size: 0.8rem;
 }
 
+.action-btn.warning {
+  background-color: var(--warning-color);
+}
+
+.action-btn.warning:hover {
+  background-color: #e0a800;
+}
+
+.action-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
 /* Plans Grid */
 .plans-grid {
   display: grid;
@@ -240,10 +253,27 @@ tr:hover {
   transition: background-color 0.3s ease;
   width: 100%;
   margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .subscribe-btn:hover {
   background-color: var(--primary-dark);
+}
+
+.subscribe-btn.success {
+  background-color: var(--success-color);
+  cursor: default;
+}
+
+.subscribe-btn.warning {
+  background-color: var(--warning-color);
+}
+
+.subscribe-btn.warning:hover {
+  background-color: #e0a800;
 }
 
 /* Modal */
@@ -341,6 +371,16 @@ tr:hover {
   border-color: #1e7e34;
 }
 
+.modal-btn-confirm.warning {
+  background-color: var(--warning-color);
+  border-color: var(--warning-color);
+}
+
+.modal-btn-confirm.warning:hover {
+  background-color: #e0a800;
+  border-color: #d39e00;
+}
+
 .no-plan {
   color: var(--text-color);
   font-size: 1.1rem;
@@ -348,6 +388,31 @@ tr:hover {
   background-color: var(--even-row-bg);
   border-radius: 6px;
   border-left: 4px solid var(--warning-color);
+}
+
+/* Payment method styles */
+.payment-method {
+  margin-bottom: 1.5rem;
+}
+
+.payment-option {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--card-bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+.payment-option.selected {
+  border-color: var(--primary-color);
+  background-color: var(--light-purple);
 }
 
 /* Responsive adjustments */

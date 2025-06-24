@@ -700,3 +700,79 @@ body {
   color: white;
   border: none;
 }
+
+
+
+/* Payment method styles */
+.payment-method {
+  margin-bottom: 1.5rem;
+}
+
+.payment-option {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--card-bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+.payment-option.selected {
+  border-color: var(--primary-color);
+  background-color: var(--light-purple);
+}
+/* Payment options in modal */
+.payment-options {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.payment-option {
+    flex: 1;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.payment-option:hover {
+    border-color: #aaa;
+}
+
+.payment-option.active {
+    border-color: #4CAF50;
+    background-color: #f8fff8;
+}
+
+.payment-option i {
+    font-size: 24px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.payment-option .payment-name {
+    font-weight: bold;
+    display: block;
+}
+
+.payment-details {
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    margin-top: 15px;
+    display: none;
+}
+
+.payment-details.active {
+    display: block;
+}

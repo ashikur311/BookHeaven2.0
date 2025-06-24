@@ -1,221 +1,323 @@
 <?php
 session_start();
-require_once '../db_connection.php'; // Database connection
+require_once '../db_connection.php';
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: authentication.php");
+    exit;
+}
 
 // Initialize variables
 $error = '';
 $success = '';
 $step = isset($_GET['step']) ? intval($_GET['step']) : 1;
-$user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
-$subscription_order_id = isset($_GET['subscription_order_id']) ? intval($_GET['subscription_order_id']) : 0;
-$order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
-$payment_type = '';
-// Determine payment type
-if ($subscription_order_id > 0) {
-    $payment_type = 'subscription';
-} elseif ($order_id > 0) {
-    $payment_type = 'book';
+$user_id = $_SESSION['user_id'];
+
+// Get payment details from URL
+$payment_type = filter_input(INPUT_GET, 'type', FILTER_SANITIZE_STRING);
+$payment_id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
+
+// Validate payment type
+if (!in_array($payment_type, ['subscription', 'book_order']) || !$payment_id) {
+    die("Invalid payment request");
 }
 
-// Check if user is logged in
-if ($user_id == 0) {
-    header("Location: login.php");
-    exit;
+// Get user details
+$userEmail = "";
+$query = "SELECT email, username FROM users WHERE user_id = ?";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$stmt->bind_result($userEmail, $username);
+$stmt->fetch();
+$stmt->close();
+
+// Generate CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Get user email
-$user_email = '';
-$stmt = $conn->prepare("SELECT email FROM users WHERE user_id = ?");
+// Get user's saved payment methods
+$saved_cards = [];
+$query = "SELECT * FROM user_payment_methods WHERE user_id = ?";
+$stmt = $conn->prepare($query);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
-if ($result->num_rows > 0) {
-    $user = $result->fetch_assoc();
-    $user_email = $user['email'];
+while ($row = $result->fetch_assoc()) {
+    $saved_cards[] = $row;
 }
 $stmt->close();
 
-// STEP 1: Enter email and send OTP
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email']) && $step == 1) {
-    $email = trim($_POST['email']);
+// Get payment details based on type
+if ($payment_type == 'subscription') {
+    // Get subscription plan details
+    $stmt = $conn->prepare("SELECT * FROM subscription_plans WHERE plan_id = ?");
+    $stmt->bind_param("i", $payment_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $payment_details = $result->fetch_assoc();
+    $stmt->close();
     
-    if (empty($email)) {
-        $error = "Please enter your email address.";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Invalid email format.";
+    if (!$payment_details) {
+        die("Invalid subscription plan");
+    }
+    
+    $amount = $payment_details['price'];
+    $description = "Subscription: " . $payment_details['plan_name'];
+    
+    // Check for existing subscription order
+    $stmt = $conn->prepare("SELECT id FROM subscription_orders 
+                           WHERE user_id = ? AND plan_id = ? 
+                           AND status = 'pending' 
+                           ORDER BY issue_date DESC LIMIT 1");
+    $stmt->bind_param("ii", $user_id, $payment_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $subscription_order = $result->fetch_assoc();
+    $stmt->close();
+    
+    if ($subscription_order) {
+        $id = $subscription_order['id'];
     } else {
-        // Generate a 6-digit OTP
-        $otp = rand(100000, 999999);
-        
-        // Store email in session
-        $_SESSION['payment_email'] = $email;
-        
-        // Insert into user_otp
-        $stmt = $conn->prepare("INSERT INTO user_otp (user_id, otp_code, otp_time, purpose, otp_attempts) 
-                               VALUES (?, ?, NOW(), 'card_payment', 0)");
-        $stmt->bind_param("is", $user_id, $otp);
-        
-        if ($stmt->execute()) {
-            // Send OTP using Python script
-            $python = "python"; // or "python3" depending on your system
-            $scriptPath = __DIR__ . "/sendotp.py"; // Path to the Python script
-            
-            // Build the command to execute the Python script
-            $command = escapeshellcmd($python . ' ' . escapeshellarg($scriptPath) . ' ' . 
-                     escapeshellarg($email) . ' ' . escapeshellarg($otp));
-            
-            // Execute the command
-            $output = shell_exec($command);
-            
-            if ($output !== null && strpos($output, "OTP sent successfully") !== false) {
-                // Proceed to OTP verification step
-                header("Location: process_card_payment.php?step=2&" . 
-                      ($payment_type == 'subscription' ? "subscription_order_id=$subscription_order_id" : "order_id=$order_id"));
-                exit;
-            } else {
-                $error = "Failed to send OTP. Please try again. Error: " . htmlspecialchars($output);
-            }
-        } else {
-            $error = "Failed to generate OTP. Please try again.";
-        }
+        // Create new subscription order
+        $invoice_number = "INV-" . date('Ymd') . "-" . strtoupper(bin2hex(random_bytes(3)));
+        $stmt = $conn->prepare("INSERT INTO subscription_orders 
+                              (user_id, plan_id, amount, invoice_number, status, 
+                              payment_status, issue_date, expire_date) 
+                              VALUES (?, ?, ?, ?, 'pending', 'unpaid', 
+                              NOW(), DATE_ADD(NOW(), INTERVAL ? DAY))");
+        $stmt->bind_param("iidsi", $user_id, $payment_id, $amount, $invoice_number, $payment_details['validity_days']);
+        $stmt->execute();
+        $id = $conn->insert_id;
         $stmt->close();
     }
+} else {
+    // For book orders (if needed)
+    $stmt = $conn->prepare("SELECT o.total_amount, o.order_id 
+                           FROM orders o 
+                           WHERE o.order_id = ? AND o.user_id = ?");
+    $stmt->bind_param("ii", $payment_id, $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $order = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$order) {
+        die("Invalid order");
+    }
+    
+    $stmt = $conn->prepare("SELECT b.title, oi.quantity, oi.price 
+                           FROM order_items oi 
+                           JOIN books b ON oi.book_id = b.book_id 
+                           WHERE oi.order_id = ?");
+    $stmt->bind_param("i", $payment_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $description = "Book Purchase: ";
+    $items = [];
+    while ($row = $result->fetch_assoc()) {
+        $items[] = $row['title'] . " (x" . $row['quantity'] . ")";
+    }
+    $description .= implode(", ", $items);
+    $amount = $order['total_amount'];
+    $stmt->close();
 }
 
-// STEP 2: Verify OTP
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp']) && $step == 2) {
-    $entered_otp = trim($_POST['otp']);
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $step == 1) {
+    // Verify CSRF token
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("Invalid CSRF token");
+    }
     
-    if (empty($entered_otp)) {
-        $error = "Please enter the OTP.";
-    } else {
-        // Get the latest OTP for this user
-        $stmt = $conn->prepare("SELECT id, otp_code FROM user_otp 
-                               WHERE user_id = ? AND purpose = 'card_payment' 
-                               ORDER BY otp_time DESC LIMIT 1");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    // Check if using saved card or new card
+    $using_saved_card = isset($_POST['saved_card_id']) && $_POST['saved_card_id'] !== 'new';
+    
+    if ($using_saved_card) {
+        // Validate saved card selection
+        $saved_card_id = intval($_POST['saved_card_id']);
+        $card_found = false;
         
-        if ($result->num_rows > 0) {
-            $otp_data = $result->fetch_assoc();
-            
-            if ($entered_otp == $otp_data['otp_code']) {
-                // OTP matched - process payment
-                if ($payment_type == 'subscription') {
-                    // Get subscription details
-                    $stmt = $conn->prepare("SELECT * FROM subscription_orders 
-                                           WHERE id = ? AND user_id = ?");
-                    $stmt->bind_param("ii", $subscription_order_id, $user_id);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    
-                    if ($result->num_rows > 0) {
-                        $subscription = $result->fetch_assoc();
-                        
-                        // Update subscription status
-                        $update = $conn->prepare("UPDATE subscription_orders 
-                                                SET status = 'active', payment_status = 'paid', 
-                                                    payment_method = 'credit_card', updated_at = NOW()
-                                                WHERE id = ?");
-                        $update->bind_param("i", $subscription_order_id);
-                        
-                        if ($update->execute()) {
-                            // Update user subscription
-                            $insert_sub = $conn->prepare("INSERT INTO user_subscriptions 
-                                                        (user_id, subscription_plan_id, start_date, end_date, 
-                                                         status, auto_renew, available_audio, available_rent_book)
-                                                        VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 
-                                                               'active', 0, ?, ?)");
-                            $insert_sub->bind_param("iiiii", $user_id, $subscription['plan_id'], 
-                                                   $subscription['validity_days'], 
-                                                   $subscription['audiobook_quantity'], 
-                                                   $subscription['book_quantity']);
-                            
-                            if ($insert_sub->execute()) {
-                                // Record transaction
-                                $txn = $conn->prepare("INSERT INTO subscription_transactions 
-                                                      (user_subscription_id, amount, payment_method, 
-                                                       payment_status, transaction_code, transaction_date)
-                                                      VALUES (?, ?, 'credit_card', 'paid', ?, NOW())");
-                                $txn_code = 'TXN-' . strtoupper(uniqid());
-                                $txn->bind_param("ids", $conn->insert_id, $subscription['amount'], $txn_code);
-                                $txn->execute();
-                                
-                                $success = "Subscription payment successful!";
-                                $_SESSION['payment_success'] = true;
-                                header("Location: subscription_plan.php?id=" . $subscription_order_id);
-                                exit;
-                            } else {
-                                $error = "Failed to activate subscription.";
-                            }
-                        } else {
-                            $error = "Failed to update subscription status.";
-                        }
-                    } else {
-                        $error = "Subscription not found.";
-                    }
-                } else {
-                    // Book purchase transaction
-                    // Get order details
-                    $stmt = $conn->prepare("SELECT * FROM orders 
-                                           WHERE order_id = ? AND user_id = ?");
-                    $stmt->bind_param("ii", $order_id, $user_id);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    
-                    if ($result->num_rows > 0) {
-                        $order = $result->fetch_assoc();
-                        
-                        // Update order status
-                        $update = $conn->prepare("UPDATE orders 
-                                                SET status = 'confirmed', payment_method = 'credit_card'
-                                                WHERE order_id = ?");
-                        $update->bind_param("i", $order_id);
-                        
-                        if ($update->execute()) {
-                            // Record transaction
-                            $txn = $conn->prepare("INSERT INTO transactions 
-                                                  (order_id, payment_method, payment_status, 
-                                                   transaction_date, payment_reference)
-                                                  VALUES (?, 'credit_card', 'paid', NOW(), ?)");
-                            $txn_ref = 'TXN-' . strtoupper(uniqid());
-                            $txn->bind_param("is", $order_id, $txn_ref);
-                            $txn->execute();
-                            
-                            // Update book quantities
-                            $items = $conn->prepare("SELECT book_id, quantity FROM order_items 
-                                                    WHERE order_id = ?");
-                            $items->bind_param("i", $order_id);
-                            $items->execute();
-                            $item_result = $items->get_result();
-                            
-                            while ($item = $item_result->fetch_assoc()) {
-                                $update_book = $conn->prepare("UPDATE books 
-                                                              SET quantity = quantity - ? 
-                                                              WHERE book_id = ?");
-                                $update_book->bind_param("ii", $item['quantity'], $item['book_id']);
-                                $update_book->execute();
-                            }
-                            
-                            $success = "Payment successful! Your order is being processed.";
-                            $_SESSION['payment_success'] = true;
-                            header("Location: user_orders.php?id=" . $order_id);
-                            exit;
-                        } else {
-                            $error = "Failed to update order status.";
-                        }
-                    } else {
-                        $error = "Order not found.";
-                    }
-                }
-            } else {
-                $error = "Invalid OTP. Please try again.";
+        // Verify the card belongs to the user
+        foreach ($saved_cards as $card) {
+            if ($card['id'] == $saved_card_id) {
+                $card_found = true;
+                $card_number = $card['card_number'];
+                $card_expiry = $card['expiry_date'];
+                $card_cvv = $_POST['saved_card_cvv']; // CVV is not stored, must be entered
+                $card_name = $card['card_name'];
+                $stored_cvv = $card['cvv']; // Get stored CVV for validation
+                break;
             }
-        } else {
-            $error = "No OTP found. Please request a new one.";
         }
-        $stmt->close();
+        
+        if (!$card_found) {
+            $error = "Invalid card selection";
+        } elseif (empty($card_cvv)) {
+            $error = "Please enter the CVV for your card";
+        } elseif (!preg_match('/^\d{3,4}$/', $card_cvv)) {
+            $error = "Invalid CVV (must be 3 or 4 digits)";
+        } elseif ($card_cvv !== $stored_cvv) {
+            $error = "CVV does not match the saved card";
+        }
+    } else {
+        // Validate new card details
+        $card_number = str_replace(' ', '', $_POST['card_number']);
+        $card_expiry = $_POST['card_expiry'];
+        $card_cvv = $_POST['card_cvv'];
+        $card_name = trim($_POST['card_name']);
+        $save_card = isset($_POST['save_card']) && $_POST['save_card'] == '1';
+        
+        // Basic validation
+        if (empty($card_number) || empty($card_expiry) || empty($card_cvv) || empty($card_name)) {
+            $error = "Please fill in all card details";
+        } elseif (!preg_match('/^\d{16}$/', $card_number)) {
+            $error = "Invalid card number (must be 16 digits)";
+        } elseif (!preg_match('/^\d{3,4}$/', $card_cvv)) {
+            $error = "Invalid CVV (must be 3 or 4 digits)";
+        } elseif (!preg_match('/^(0[1-9]|1[0-2])\/?([0-9]{2})$/', $card_expiry)) {
+            $error = "Invalid expiry date (MM/YY format)";
+        }
+    }
+    
+    if (empty($error)) {
+        // Process payment (in a real app, this would connect to Stripe/PayPal/etc.)
+        $transaction_id = "CARD" . time() . rand(100, 999);
+        
+        // Start transaction
+        $conn->begin_transaction();
+        
+        try {
+            if ($payment_type == 'subscription') {
+                // Check for existing subscription
+                $stmt = $conn->prepare("SELECT * FROM user_subscriptions 
+                                      WHERE user_id = ? AND subscription_plan_id = ?
+                                      ORDER BY end_date DESC LIMIT 1");
+                $stmt->bind_param("ii", $user_id, $payment_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $existing_sub = $result->fetch_assoc();
+                $stmt->close();
+                
+                // Create or update subscription
+                if ($existing_sub && strtotime($existing_sub['end_date']) > time()) {
+                    // Extend existing subscription
+                    $new_end_date = date('Y-m-d H:i:s', strtotime($existing_sub['end_date'] . " + {$payment_details['validity_days']} days"));
+                    $stmt = $conn->prepare("UPDATE user_subscriptions 
+                                          SET end_date = ?,
+                                              status = 'active',
+                                              available_audio = available_audio + ?,
+                                              available_rent_book = available_rent_book + ?
+                                          WHERE user_subscription_id = ?");
+                    $stmt->bind_param("siii", $new_end_date, $payment_details['audiobook_quantity'], 
+                                     $payment_details['book_quantity'], $existing_sub['user_subscription_id']);
+                } else {
+                    // Create new subscription
+                    $new_end_date = date('Y-m-d H:i:s', strtotime("+{$payment_details['validity_days']} days"));
+                    $stmt = $conn->prepare("INSERT INTO user_subscriptions 
+                                          (user_id, subscription_plan_id, start_date, end_date, 
+                                          status, available_audio, available_rent_book)
+                                          VALUES (?, ?, NOW(), ?, 'active', ?, ?)");
+                    $stmt->bind_param("iisii", $user_id, $payment_id, $new_end_date, 
+                                     $payment_details['audiobook_quantity'], $payment_details['book_quantity']);
+                }
+                $stmt->execute();
+                $subscription_id = $existing_sub['user_subscription_id'] ?? $conn->insert_id;
+                $stmt->close();
+                
+                // Record the transaction
+                $stmt = $conn->prepare("INSERT INTO subscription_transactions 
+                                      (user_subscription_id, amount, payment_method, 
+                                      payment_status, transaction_code, payment_provider, transaction_date)
+                                      VALUES (?, ?, 'card', 'paid', ?, 'Stripe', NOW())");
+                $stmt->bind_param("ids", $subscription_id, $amount, $transaction_id);
+                $stmt->execute();
+                $stmt->close();
+                
+                // Update subscription order status
+                $stmt = $conn->prepare("UPDATE subscription_orders 
+                                      SET payment_status = 'paid', 
+                                          payment_method = 'card',
+                                          status = 'active',
+                                          issue_date = NOW(),
+                                          expire_date = ?,
+                                          user_subscription_id = ?
+                                      WHERE id = ?");
+                $stmt->bind_param("sii", $new_end_date, $subscription_id, $id);
+                $stmt->execute();
+                $stmt->close();
+                
+                $success = "Subscription payment successful! Your subscription is now active.";
+                $redirect = "user_subscription.php";
+            } else {
+                // For book orders (if needed)
+                $stmt = $conn->prepare("INSERT INTO transactions 
+                                      (order_id, payment_method, payment_status, 
+                                      transaction_date, payment_reference)
+                                      VALUES (?, 'card', 'paid', NOW(), ?)");
+                $stmt->bind_param("is", $payment_id, $transaction_id);
+                $stmt->execute();
+                $stmt->close();
+                
+                // Update order status
+                $stmt = $conn->prepare("UPDATE orders 
+                                      SET status = 'confirmed', 
+                                          payment_method = 'card',
+                                          payment_status = 'paid'
+                                      WHERE order_id = ?");
+                $stmt->bind_param("i", $payment_id);
+                $stmt->execute();
+                $stmt->close();
+                
+                $success = "Book purchase successful! Your order has been confirmed.";
+                $redirect = "user_orders.php";
+            }
+            
+            // Save new card if requested and not using saved card
+            if (!$using_saved_card && $save_card) {
+                // Extract expiry month and year
+                $expiry_parts = explode('/', $card_expiry);
+                $expiry_month = $expiry_parts[0];
+                $expiry_year = '20' . $expiry_parts[1]; // Assuming 21st century
+                $formatted_expiry = $expiry_month . '/' . substr($expiry_year, 2);
+                
+                // Detect card type based on number (simplified for example)
+                $card_type = 'visa';
+                if (preg_match('/^5[1-5]/', $card_number)) {
+                    $card_type = 'mastercard';
+                } elseif (preg_match('/^3[47]/', $card_number)) {
+                    $card_type = 'amex';
+                } elseif (preg_match('/^6(?:011|5)/', $card_number)) {
+                    $card_type = 'discover';
+                }
+                
+                $stmt = $conn->prepare("INSERT INTO user_payment_methods 
+                                      (user_id, card_type, card_number, card_name, expiry_date, cvv, is_default)
+                                      VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $is_default = (count($saved_cards) === 0) ? 1 : 0; // Set as default if first card
+                $stmt->bind_param("isssssi", $user_id, $card_type, $card_number, $card_name, $formatted_expiry, $card_cvv, $is_default);
+                $stmt->execute();
+                $stmt->close();
+            }
+            
+            $conn->commit();
+            
+            // Clear CSRF token
+            unset($_SESSION['csrf_token']);
+            
+            // Store success message in session
+            $_SESSION['payment_success'] = $success;
+            header("Location: $redirect");
+            exit;
+            
+        } catch (Exception $e) {
+            $conn->rollback();
+            $error = "Payment processing failed. Please try again or contact support.";
+            error_log("Payment failed - User: $user_id, Error: " . $e->getMessage());
+        }
     }
 }
 ?>
@@ -225,127 +327,244 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp']) && $step == 2)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Payment | BookHeaven</title>
+    <title>BookHeaven - Secure Payment</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --success-color: #4cc9f0;
+            --danger-color: #f72585;
+            --warning-color: #f8961e;
         }
+        
+        body {
+            background-color: #f5f7ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--dark-color);
+        }
+
         .payment-container {
             max-width: 600px;
-            margin: 50px auto;
+            margin: 2rem auto;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: none;
         }
+
         .payment-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1.5rem;
             text-align: center;
-            margin-bottom: 30px;
         }
-        .payment-header h2 {
-            color: #2c3e50;
+
+        .payment-header h3 {
+            margin: 0;
             font-weight: 600;
-        }
-        .payment-header p {
-            color: #7f8c8d;
-        }
-        .payment-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .payment-card-header {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            justify-content: center;
         }
-        .payment-card-header i {
-            font-size: 24px;
+
+        .payment-header h3 i {
             margin-right: 10px;
-            color: #3498db;
         }
-        .payment-card-header h4 {
-            margin: 0;
-            color: #2c3e50;
+
+        .payment-body {
+            padding: 2rem;
         }
-        .form-label {
-            font-weight: 500;
-            color: #2c3e50;
+
+        .payment-summary {
+            background-color: var(--light-color);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--accent-color);
         }
-        .btn-pay {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-weight: 500;
-            width: 100%;
-            transition: background-color 0.3s;
+
+        .payment-summary h5 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-weight: 600;
         }
-        .btn-pay:hover {
-            background-color: #2980b9;
-        }
-        .payment-methods {
+
+        .payment-summary p {
+            margin-bottom: 0.5rem;
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
         }
-        .payment-method {
-            border: 1px solid #e0e0e0;
+
+        .payment-summary p strong {
+            width: 120px;
+            display: inline-block;
+            color: var(--dark-color);
+        }
+
+        .alert {
             border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            flex: 1;
-            margin: 0 5px;
+        }
+
+        .saved-card-option {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            background-color: var(--light-color);
+            transition: all 0.3s ease;
             cursor: pointer;
+            border: 1px solid #e0e0e0;
+        }
+
+        .saved-card-option:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .saved-card-option input[type="radio"] {
+            margin-right: 1rem;
+            accent-color: var(--primary-color);
+        }
+
+        .saved-card-details {
+            flex-grow: 1;
+        }
+
+        .card-type {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 1rem;
+        }
+
+        .card-type i {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .card-number {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        .card-expiry {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .card-cvv-input {
+            max-width: 100px;
+            display: inline-block;
+            margin-left: 1rem;
+        }
+
+        .new-card-form {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background-color: var(--light-color);
+            border-radius: 10px;
+            border: 1px dashed var(--accent-color);
+        }
+
+        .card-icons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icons img {
+            height: 25px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .card-icons img:hover {
+            opacity: 1;
+        }
+
+        .form-control {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
             transition: all 0.3s;
         }
-        .payment-method:hover {
-            border-color: #3498db;
+
+        .form-control:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
         }
-        .payment-method.active {
-            border-color: #3498db;
-            background-color: #f0f8ff;
-        }
-        .payment-method i {
-            font-size: 30px;
-            margin-bottom: 10px;
-            color: #3498db;
-        }
-        .otp-input {
-            letter-spacing: 10px;
-            font-size: 24px;
-            text-align: center;
-        }
-        .resend-otp {
-            text-align: center;
-            margin-top: 15px;
-        }
-        .resend-otp a {
-            color: #3498db;
-            text-decoration: none;
-        }
-        .payment-summary {
-            background-color: #f8f9fa;
+
+        .btn-pay {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 1rem;
             border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .summary-total {
             font-weight: 600;
-            font-size: 18px;
-            border-top: 1px solid #e0e0e0;
-            padding-top: 10px;
-            margin-top: 10px;
+            width: 100%;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-pay:hover {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-pay:active {
+            transform: translateY(0);
+        }
+
+        .security-note {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .security-note i {
+            color: var(--success-color);
+            margin-right: 5px;
+        }
+
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+
+        .progress-bar {
+            background-color: var(--success-color);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .form-check-label {
+            cursor: pointer;
+        }
+
+        /* Animation for payment processing */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .processing {
+            animation: pulse 1.5s infinite;
         }
     </style>
 </head>
@@ -353,193 +572,273 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp']) && $step == 2)
     <div class="container">
         <div class="payment-container">
             <div class="payment-header">
-                <h2>Secure Payment</h2>
-                <p>Complete your purchase with our secure payment gateway</p>
+                <h3><i class="far fa-credit-card"></i> Secure Payment</h3>
             </div>
             
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-danger"><?php echo $error; ?></div>
-            <?php endif; ?>
-            
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success"><?php echo $success; ?></div>
-            <?php endif; ?>
-            
-            <!-- Payment Summary -->
-            <div class="payment-summary">
-                <h5>Order Summary</h5>
-                <?php if ($payment_type == 'subscription'): ?>
-                    <?php 
-                    $stmt = $conn->prepare("SELECT sp.plan_name, sp.price, so.amount 
-                                           FROM subscription_orders so
-                                           JOIN subscription_plans sp ON so.plan_id = sp.plan_id
-                                           WHERE so.id = ? AND so.user_id = ?");
-                    $stmt->bind_param("ii", $subscription_order_id, $user_id);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    $subscription = $result->fetch_assoc();
-                    $stmt->close();
-                    ?>
-                    <div class="summary-item">
-                        <span>Subscription Plan:</span>
-                        <span><?php echo htmlspecialchars($subscription['plan_name']); ?></span>
+            <div class="payment-body">
+                <?php if ($success): ?>
+                    <div class="alert alert-success">
+                        <h4 class="alert-heading">Payment Successful!</h4>
+                        <p><?php echo $success; ?></p>
+                        <p>You will be redirected shortly...</p>
+                        <div class="progress mt-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                        </div>
                     </div>
-                    <div class="summary-item">
-                        <span>Amount:</span>
-                        <span>৳<?php echo number_format($subscription['amount'], 2); ?></span>
-                    </div>
-                    <div class="summary-item summary-total">
-                        <span>Total:</span>
-                        <span>৳<?php echo number_format($subscription['amount'], 2); ?></span>
-                    </div>
+                    <script>
+                        setTimeout(function() {
+                            window.location.href = "<?php echo $redirect; ?>";
+                        }, 3000);
+                    </script>
                 <?php else: ?>
-                    <?php 
-                    $stmt = $conn->prepare("SELECT o.total_amount 
-                                           FROM orders o
-                                           WHERE o.order_id = ? AND o.user_id = ?");
-                    $stmt->bind_param("ii", $order_id, $user_id);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    $order = $result->fetch_assoc();
-                    $stmt->close();
+                    <div class="payment-summary">
+                        <h5><i class="fas fa-receipt"></i> Order Summary</h5>
+                        <p><strong>Description:</strong> <?php echo htmlspecialchars($description); ?></p>
+                        <p><strong>Amount:</strong> $<?php echo number_format($amount, 2); ?></p>
+                        <p><strong>Customer:</strong> <?php echo htmlspecialchars($username); ?></p>
+                    </div>
                     
-                    $stmt = $conn->prepare("SELECT b.title, oi.price, oi.quantity 
-                                           FROM order_items oi
-                                           JOIN books b ON oi.book_id = b.book_id
-                                           WHERE oi.order_id = ?");
-                    $stmt->bind_param("i", $order_id);
-                    $stmt->execute();
-                    $items_result = $stmt->get_result();
-                    $stmt->close();
-                    ?>
-                    <?php while ($item = $items_result->fetch_assoc()): ?>
-                        <div class="summary-item">
-                            <span><?php echo htmlspecialchars($item['title']); ?> (x<?php echo $item['quantity']; ?>)</span>
-                            <span>৳<?php echo number_format($item['price'] * $item['quantity'], 2); ?></span>
+                    <?php if ($error): ?>
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <?php echo $error; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
-                    <?php endwhile; ?>
-                    <div class="summary-item">
-                        <span>Shipping:</span>
-                        <span>৳0.00</span>
-                    </div>
-                    <div class="summary-item summary-total">
-                        <span>Total:</span>
-                        <span>৳<?php echo number_format($order['total_amount'], 2); ?></span>
-                    </div>
+                    <?php endif; ?>
+                    
+                    <form method="POST" action="process_card_payment.php?type=<?php echo $payment_type; ?>&id=<?php echo $payment_id; ?>&step=1">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        
+                        <h5 class="mb-3"><i class="fas fa-credit-card"></i> Payment Method</h5>
+                        
+                        <?php if (!empty($saved_cards)): ?>
+                            <div class="mb-4">
+                                <?php foreach ($saved_cards as $card): 
+                                    $card_last4 = substr($card['card_number'], -4);
+                                    $card_type = strtolower($card['card_type']);
+                                ?>
+                                    <div class="saved-card-option">
+                                        <input type="radio" name="saved_card_id" id="card_<?php echo $card['id']; ?>" 
+                                               value="<?php echo $card['id']; ?>" 
+                                               <?php echo (count($saved_cards) == 1) ? 'checked' : ''; ?>>
+                                        <div class="saved-card-details">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <span class="card-type">
+                                                    <i class="fab fa-cc-<?php echo $card_type; ?>"></i>
+                                                    <?php echo ucfirst($card_type); ?>
+                                                </span>
+                                                <span class="card-number">•••• •••• •••• <?php echo $card_last4; ?></span>
+                                                <span class="card-expiry ms-auto">Exp: <?php echo $card['expiry_date']; ?></span>
+                                            </div>
+                                            <div class="d-flex align-items-center">
+                                                <small class="text-muted"><?php echo htmlspecialchars($card['card_name']); ?></small>
+                                                <div class="ms-auto">
+                                                    <small>CVV:</small>
+                                                    <input type="password" name="saved_card_cvv" 
+                                                           class="form-control form-control-sm card-cvv-input" 
+                                                           placeholder="•••" maxlength="4" 
+                                                           <?php echo (count($saved_cards) > 1) ? 'disabled' : ''; ?>
+                                                           required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                                
+                                <div class="saved-card-option">
+                                    <input type="radio" name="saved_card_id" id="card_new" value="new">
+                                    <label for="card_new" class="ms-2 fw-bold"><i class="fas fa-plus-circle me-2"></i>Use a new card</label>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <div id="newCardForm" class="<?php echo empty($saved_cards) ? 'show' : 'new-card-form'; ?>">
+                            <div class="card-icons">
+                                <img src="/BookHeaven2.0/assets/images/visa.png" alt="Visa" title="Visa">
+                                <img src="/BookHeaven2.0/assets/images/mastercard.png" alt="Mastercard" title="Mastercard">
+                                <img src="/BookHeaven2.0/assets/images/amex.png" alt="American Express" title="American Express">
+                                <img src="/BookHeaven2.0/assets/images/discover.png" alt="Discover" title="Discover">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="card_name" class="form-label">Cardholder Name</label>
+                                <input type="text" class="form-control" id="card_name" name="card_name" 
+                                       placeholder="Name on card" <?php echo !empty($saved_cards) ? 'disabled' : ''; ?> required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="card_number" class="form-label">Card Number</label>
+                                <input type="text" class="form-control" id="card_number" name="card_number" 
+                                       placeholder="1234 5678 9012 3456" <?php echo !empty($saved_cards) ? 'disabled' : ''; ?> required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="card_expiry" class="form-label">Expiry Date</label>
+                                    <input type="text" class="form-control" id="card_expiry" name="card_expiry" 
+                                           placeholder="MM/YY" <?php echo !empty($saved_cards) ? 'disabled' : ''; ?> required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="card_cvv" class="form-label">Security Code (CVV)</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="card_cvv" name="card_cvv" 
+                                               placeholder="•••" <?php echo !empty($saved_cards) ? 'disabled' : ''; ?> required>
+                                        <span class="input-group-text" id="cvvHelp">
+                                            <i class="fas fa-question-circle" title="3 or 4 digit security code on back of card"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <?php if (empty($saved_cards)): ?>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="save_card" id="save_card" value="1" checked>
+                                    <label class="form-check-label" for="save_card">
+                                        <i class="fas fa-save me-1"></i> Save this card for future payments
+                                    </label>
+                                </div>
+                            <?php else: ?>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="save_card" id="save_card" value="1">
+                                    <label class="form-check-label" for="save_card">
+                                        <i class="fas fa-save me-1"></i> Save this card for future payments
+                                    </label>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-pay">
+                            <i class="fas fa-lock me-2"></i> Pay $<?php echo number_format($amount, 2); ?>
+                        </button>
+                        
+                        <div class="security-note">
+                            <i class="fas fa-shield-alt"></i> Your payment is secured with 256-bit SSL encryption
+                        </div>
+                    </form>
                 <?php endif; ?>
-            </div>
-            
-            <!-- Payment Steps -->
-            <?php if ($step == 1): ?>
-                <!-- Step 1: Enter Email -->
-                <form method="POST" action="">
-                    <div class="payment-card">
-                        <div class="payment-card-header">
-                            <i class="fas fa-envelope"></i>
-                            <h4>Verify Your Email</h4>
-                        </div>
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email" 
-                                   value="<?php echo htmlspecialchars($user_email); ?>" required>
-                        </div>
-                        <button type="submit" class="btn btn-pay">Send Verification OTP</button>
-                    </div>
-                </form>
-            <?php elseif ($step == 2): ?>
-                <!-- Step 2: Verify OTP -->
-                <form method="POST" action="">
-                    <div class="payment-card">
-                        <div class="payment-card-header">
-                            <i class="fas fa-shield-alt"></i>
-                            <h4>Verify OTP</h4>
-                        </div>
-                        <p>We've sent a 6-digit verification code to <?php echo htmlspecialchars($_SESSION['payment_email']); ?></p>
-                        <div class="mb-3">
-                            <label for="otp" class="form-label">Enter OTP</label>
-                            <input type="text" class="form-control otp-input" id="otp" name="otp" 
-                                   maxlength="6" pattern="\d{6}" required>
-                        </div>
-                        <button type="submit" class="btn btn-pay">Verify & Complete Payment</button>
-                        <div class="resend-otp">
-                            <a href="#" id="resend-otp">Resend OTP</a>
-                        </div>
-                    </div>
-                </form>
-            <?php endif; ?>
-            
-            <!-- Payment Methods -->
-            <div class="payment-card">
-                <div class="payment-card-header">
-                    <i class="fas fa-credit-card"></i>
-                    <h4>Payment Methods</h4>
-                </div>
-                <div class="payment-methods">
-                    <div class="payment-method active">
-                        <i class="fab fa-cc-visa"></i>
-                        <div>Credit Card</div>
-                    </div>
-                    <div class="payment-method">
-                        <i class="fas fa-mobile-alt"></i>
-                        <div>bKash</div>
-                    </div>
-                    <div class="payment-method">
-                        <i class="fas fa-university"></i>
-                        <div>Bank Transfer</div>
-                    </div>
-                </div>
-                
-                <!-- Credit Card Form (hidden initially) -->
-                <div id="credit-card-form" style="display: none;">
-                    <div class="mb-3">
-                        <label for="card-number" class="form-label">Card Number</label>
-                        <input type="text" class="form-control" id="card-number" placeholder="1234 5678 9012 3456">
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="expiry-date" class="form-label">Expiry Date</label>
-                            <input type="text" class="form-control" id="expiry-date" placeholder="MM/YY">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="cvv" class="form-label">CVV</label>
-                            <input type="text" class="form-control" id="cvv" placeholder="123">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="card-name" class="form-label">Name on Card</label>
-                        <input type="text" class="form-control" id="card-name" placeholder="John Doe">
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Handle payment method selection
-        document.querySelectorAll('.payment-method').forEach(method => {
-            method.addEventListener('click', function() {
-                document.querySelectorAll('.payment-method').forEach(m => {
-                    m.classList.remove('active');
-                });
-                this.classList.add('active');
+        // Format card number input
+        document.getElementById('card_number')?.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '')
+                .replace(/(\d{4})/g, '$1 ')
+                .trim()
+                .substring(0, 19);
+        });
+        
+        // Format expiry date input
+        document.getElementById('card_expiry')?.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '')
+                .replace(/(\d{2})/, '$1/')
+                .substring(0, 5);
+        });
+        
+        // Format CVV input
+        document.getElementById('card_cvv')?.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '').substring(0, 4);
+        });
+        
+        // Toggle between saved cards and new card form
+        document.querySelectorAll('input[name="saved_card_id"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const newCardForm = document.getElementById('newCardForm');
+                const isNewCard = this.value === 'new';
                 
-                // Show/hide forms based on selection
-                // In a real implementation, you would handle different payment methods
+                // Toggle new card form visibility
+                if (isNewCard) {
+                    newCardForm.classList.add('show');
+                } else {
+                    newCardForm.classList.remove('show');
+                }
+                
+                // Enable/disable new card form fields
+                const newCardFields = newCardForm.querySelectorAll('input:not([type="radio"]):not([type="checkbox"])');
+                newCardFields.forEach(field => {
+                    field.disabled = !isNewCard;
+                    if (isNewCard) {
+                        field.required = true;
+                    } else {
+                        field.required = false;
+                        field.value = '';
+                    }
+                });
+                
+                // Enable/disable CVV field for saved card
+                if (!isNewCard) {
+                    const cardId = this.value;
+                    const cvvInput = document.querySelector(`input[value="${cardId}"]`).closest('.saved-card-option').querySelector('input[name="saved_card_cvv"]');
+                    if (cvvInput) {
+                        cvvInput.disabled = false;
+                        cvvInput.required = true;
+                    }
+                    
+                    // Disable other CVV inputs
+                    document.querySelectorAll('input[name="saved_card_cvv"]').forEach(input => {
+                        if (input !== cvvInput) {
+                            input.disabled = true;
+                            input.required = false;
+                            input.value = '';
+                        }
+                    });
+                } else {
+                    // Disable all saved card CVV inputs
+                    document.querySelectorAll('input[name="saved_card_cvv"]').forEach(input => {
+                        input.disabled = true;
+                        input.required = false;
+                        input.value = '';
+                    });
+                }
+                
+                // Enable/disable save card checkbox
+                const saveCardCheckbox = document.getElementById('save_card');
+                if (isNewCard) {
+                    saveCardCheckbox.disabled = false;
+                } else {
+                    saveCardCheckbox.disabled = true;
+                    saveCardCheckbox.checked = false;
+                }
             });
         });
         
-        // Resend OTP
-        document.getElementById('resend-otp')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            alert('A new OTP has been sent to your email.');
-            // In a real implementation, you would resend the OTP
+        // Initialize form based on saved cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedCards = <?php echo json_encode($saved_cards); ?>;
+            
+            if (savedCards.length > 0) {
+                // Enable CVV for the first saved card if it's selected
+                const firstCardRadio = document.querySelector('input[name="saved_card_id"]:checked');
+                if (firstCardRadio) {
+                    const cvvInput = firstCardRadio.closest('.saved-card-option').querySelector('input[name="saved_card_cvv"]');
+                    if (cvvInput) {
+                        cvvInput.disabled = false;
+                        cvvInput.required = true;
+                    }
+                }
+            }
         });
         
-        // Format OTP input
-        document.querySelector('.otp-input')?.addEventListener('input', function(e) {
-            this.value = this.value.replace(/\D/g, '');
+        // Add pulse animation to pay button on submit
+        document.querySelector('form')?.addEventListener('submit', function() {
+            const payButton = this.querySelector('button[type="submit"]');
+            if (payButton) {
+                payButton.classList.add('processing');
+                payButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
+                payButton.disabled = true;
+            }
         });
+        
+        // Auto-focus first field
+        document.querySelector('input[name="saved_card_id"]:checked')?.focus() || 
+        document.getElementById('card_name')?.focus();
+        
+        // Prevent form resubmission
+        if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.href);
+        }
     </script>
 </body>
 </html>

@@ -29,7 +29,6 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Sanitize inputs
 $payment_type = filter_input(INPUT_GET, 'type', FILTER_SANITIZE_STRING);
 $payment_id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
 
@@ -38,6 +37,17 @@ if (!in_array($payment_type, ['subscription', 'book_order']) || !$payment_id) {
     die("Invalid payment request");
 }
 
+// After:
+$payment_type = filter_input(INPUT_GET, 'type', FILTER_SANITIZE_STRING);
+$payment_id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT) ?? 
+              filter_input(INPUT_GET, 'order_id', FILTER_SANITIZE_NUMBER_INT); // Add fallback
+
+// Validate payment type
+if (!in_array($payment_type, ['subscription', 'book_order']) || !$payment_id) {
+    // More descriptive error
+    die("Invalid payment request. Type: " . htmlspecialchars($payment_type) . 
+        ", ID: " . htmlspecialchars($payment_id));
+}
 // Get payment details based on type
 if ($payment_type == 'subscription') {
     // Get subscription plan details
@@ -158,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bkash_number']) && $s
             if ($stmt->execute()) {
                 // Send OTP via Python script (same as first example)
                 $python = "python"; // or "python3" depending on your system
-                $scriptPath = "C:/xampp/htdocs/BookHeaven2.0/sendotp.py"; // Update path as needed
+                $scriptPath = "C:/xampp/htdocs/BookHeaven/sendotp.py"; // Update path as needed
                 
                 $command = escapeshellcmd($python . ' ' . escapeshellarg($scriptPath) . ' ' 
                          . escapeshellarg($userEmail) . ' ' 
@@ -274,7 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp']) && $step == 2)
                                 $stmt->close();
                                 
                                 $success = "Subscription payment successful! Your subscription is now active.";
-                                $redirect = "subscription.php";
+                                $redirect = "user_subscription.php";
                             } else {
                                 // For book purchase
                                 
@@ -289,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp']) && $step == 2)
                                 
                                 // Update order status
                                 $stmt = $conn->prepare("UPDATE orders 
-                                                      SET status = 'confirmed', 
+                                                      SET status = 'pending', 
                                                           payment_method = 'online',
                                                           payment_status = 'paid'
                                                       WHERE order_id = ?");
@@ -300,7 +310,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp']) && $step == 2)
                                 $success = "Book purchase successful! Your order has been confirmed.";
                                 $redirect = "user_orders.php";
                             }
-                            
                             $conn->commit();
                             
                             // Clear session data
@@ -353,60 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['otp']) && $step == 2)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BookHeaven - bKash Payment</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .bkash-header {
-            background-color: #e2136e;
-            color: white;
-            padding: 15px 0;
-            text-align: center;
-            border-radius: 8px 8px 0 0;
-        }
-        .bkash-logo {
-            max-width: 100px;
-            margin-bottom: 15px;
-        }
-        .payment-card {
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            margin: 30px auto;
-        }
-        .payment-body {
-            padding: 25px;
-            border: 1px solid #eee;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-        }
-        .form-control:focus {
-            border-color: #e2136e;
-            box-shadow: 0 0 0 0.25rem rgba(226, 19, 110, 0.25);
-        }
-        .btn-bkash {
-            background-color: #e2136e;
-            color: white;
-            font-weight: bold;
-        }
-        .btn-bkash:hover {
-            background-color: #c0105d;
-            color: white;
-        }
-        .payment-summary {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .otp-input {
-            letter-spacing: 10px;
-            font-size: 24px;
-            text-align: center;
-            padding: 10px;
-        }
-        .attempts-warning {
-            color: #dc3545;
-            font-weight: bold;
-        }
-    </style>
+    <link rel="stylesheet" href="/BookHeaven2.0/css/bkash_payment.css">
 </head>
 <body>
     <div class="container">
