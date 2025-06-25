@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Player</title>
+    <title>Audiobook Player</title>
     <style>
         :root {
           --primary-color: #57abd2;
@@ -72,6 +72,40 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Music icons animation */
+        .music-icons-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .music-icon {
+            position: absolute;
+            font-size: 1.2rem;
+            opacity: 0.7;
+            user-select: none;
+            z-index: 1;
+        }
+
+        .background-art {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.1;
+            z-index: 1;
+            filter: blur(8px);
         }
 
         .song-list {
@@ -126,6 +160,8 @@
             align-items: center;
             width: 100%;
             max-width: 500px;
+            position: relative;
+            z-index: 2;
         }
 
         .album-art {
@@ -135,6 +171,18 @@
             object-fit: cover;
             margin-bottom: 25px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            animation: pulse 8s infinite ease-in-out;
+            transition: transform 0.3s;
+        }
+
+        .album-art:hover {
+            transform: scale(1.03);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
         }
 
         .song-details {
@@ -199,10 +247,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
         }
 
         .control-btn:hover {
             background-color: var(--nav-hover);
+            transform: scale(1.1);
         }
 
         .play-btn {
@@ -215,6 +265,7 @@
 
         .play-btn:hover {
             background-color: #4a9bc1;
+            transform: scale(1.05);
         }
 
         .volume-control {
@@ -240,6 +291,12 @@
             width: 80%;
         }
 
+        .no-books {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
         @media (max-width: 768px) {
             main {
                 flex-direction: column;
@@ -257,71 +314,22 @@
     <?php include_once("../header.php"); ?>
     <main>
         <aside>
-            <h2>Song List</h2>
+            <h2>Your Audiobooks</h2>
             <ul class="song-list" id="songList">
-                <li class="song-item active" 
-                    data-cover="https://i.scdn.co/image/ab67616d00001e02ff9ca10b55ce82ae553c8228" 
-                    data-title="Blinding Lights" 
-                    data-artist="The Weeknd"
-                    data-audio="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">
-                    <img src="https://i.scdn.co/image/ab67616d00001e02ff9ca10b55ce82ae553c8228" alt="Cover" class="song-cover">
-                    <div class="song-info">
-                        <div class="song-title">Blinding Lights</div>
-                        <div class="song-artist">The Weeknd</div>
-                    </div>
-                </li>
-                <li class="song-item" 
-                    data-cover="https://i.scdn.co/image/ab67616d00001e029ad3e9959f48d513886b8933" 
-                    data-title="Save Your Tears" 
-                    data-artist="The Weeknd"
-                    data-audio="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">
-                    <img src="https://i.scdn.co/image/ab67616d00001e029ad3e9959f48d513886b8933" alt="Cover" class="song-cover">
-                    <div class="song-info">
-                        <div class="song-title">Save Your Tears</div>
-                        <div class="song-artist">The Weeknd</div>
-                    </div>
-                </li>
-                <li class="song-item" 
-                    data-cover="https://i.scdn.co/image/ab67616d00001e02c591d5a0ca51d4f1e96b0a1e" 
-                    data-title="Levitating" 
-                    data-artist="Dua Lipa"
-                    data-audio="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3">
-                    <img src="https://i.scdn.co/image/ab67616d00001e02c591d5a0ca51d4f1e96b0a1e" alt="Cover" class="song-cover">
-                    <div class="song-info">
-                        <div class="song-title">Levitating</div>
-                        <div class="song-artist">Dua Lipa</div>
-                    </div>
-                </li>
-                <li class="song-item" 
-                    data-cover="https://i.scdn.co/image/ab67616d00001e02a991995542d50a691b9ae5be" 
-                    data-title="Don't Start Now" 
-                    data-artist="Dua Lipa"
-                    data-audio="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3">
-                    <img src="https://i.scdn.co/image/ab67616d00001e02a991995542d50a691b9ae5be" alt="Cover" class="song-cover">
-                    <div class="song-info">
-                        <div class="song-title">Don't Start Now</div>
-                        <div class="song-artist">Dua Lipa</div>
-                    </div>
-                </li>
-                <li class="song-item" 
-                    data-cover="https://i.scdn.co/image/ab67616d00001e02b5ad99d6a963bc9b3c5a9c03" 
-                    data-title="Watermelon Sugar" 
-                    data-artist="Harry Styles"
-                    data-audio="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3">
-                    <img src="https://i.scdn.co/image/ab67616d00001e02b5ad99d6a963bc9b3c5a9c03" alt="Cover" class="song-cover">
-                    <div class="song-info">
-                        <div class="song-title">Watermelon Sugar</div>
-                        <div class="song-artist">Harry Styles</div>
-                    </div>
-                </li>
+                <!-- Audiobooks will be loaded here dynamically -->
+                <div class="no-books" id="noBooksMessage">Loading your audiobooks...</div>
             </ul>
         </aside>
         <div class="player-container">
+            <!-- Music icons animation container -->
+            <div class="music-icons-container" id="musicIconsContainer"></div>
+            
+            <div class="background-art" id="backgroundArt"></div>
             <div class="now-playing">
-                <img src="https://i.scdn.co/image/ab67616d00001e02ff9ca10b55ce82ae553c8228" alt="Album Art" class="album-art">
+                <img src="assets/default-audiobook-cover.jpg" alt="Audiobook Cover" class="album-art" id="albumArt">
                 <div class="song-details">
-                    <h1 class="song-name">Blinding Lights</h1>
-                    <p class="artist-name">The Weeknd</p>
+                    <h1 class="song-name" id="songName">No Audiobook Selected</h1>
+                    <p class="artist-name" id="artistName">Select an audiobook from the list</p>
                 </div>
                 <div class="progress-container">
                     <div class="progress-bar" id="progressBar">
@@ -362,7 +370,6 @@
         // DOM Elements
         const audioPlayer = document.getElementById('audioPlayer');
         const songList = document.getElementById('songList');
-        const songItems = document.querySelectorAll('.song-item');
         const playBtn = document.getElementById('playBtn');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
@@ -372,19 +379,44 @@
         const durationEl = document.getElementById('duration');
         const volumeSlider = document.getElementById('volumeSlider');
         const volumeProgress = document.getElementById('volumeProgress');
+        const albumArt = document.getElementById('albumArt');
+        const songName = document.getElementById('songName');
+        const artistName = document.getElementById('artistName');
+        const backgroundArt = document.getElementById('backgroundArt');
+        const noBooksMessage = document.getElementById('noBooksMessage');
+        const musicIconsContainer = document.getElementById('musicIconsContainer');
 
         // Player state
         let isPlaying = false;
         let currentSongIndex = 0;
+        let audiobooks = [];
+        let musicIcons = [];
+        let animationFrameId;
+        
+        // Music icons configuration
+        const musicSymbols = ['♪', '♫', '♩', '♬', '♭', '♮', '♯', '🎵', '🎶', '🎧', '🎼', '📻'];
+        const colors = ['#FF5252', '#FF4081', '#E040FB', '#7C4DFF', '#536DFE', '#448AFF', 
+                        '#40C4FF', '#18FFFF', '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41', 
+                        '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'];
 
         // Initialize player
-        function initPlayer() {
+        async function initPlayer() {
             // Set initial volume
             audioPlayer.volume = 0.8;
             volumeProgress.style.width = '80%';
             
-            // Load first song
-            loadSong(currentSongIndex);
+            // Initialize music icons animation
+            setupMusicIcons();
+            
+            // Load user's audiobooks
+            await fetchUserAudiobooks();
+            
+            // If we have audiobooks, load the first one
+            if (audiobooks.length > 0) {
+                loadSong(currentSongIndex);
+            } else {
+                noBooksMessage.textContent = "You don't have any audiobooks in your subscription.";
+            }
             
             // Event listeners
             playBtn.addEventListener('click', togglePlay);
@@ -401,27 +433,188 @@
             audioPlayer.addEventListener('timeupdate', updateProgress);
             audioPlayer.addEventListener('ended', nextSong);
             audioPlayer.addEventListener('loadedmetadata', updateSongInfo);
+            audioPlayer.addEventListener('play', startMusicIconsAnimation);
+            audioPlayer.addEventListener('pause', stopMusicIconsAnimation);
+        }
+
+        // Setup music icons
+        function setupMusicIcons() {
+            // Clear any existing icons
+            musicIconsContainer.innerHTML = '';
+            musicIcons = [];
+            
+            // Create initial set of icons
+            for (let i = 0; i < 30; i++) {
+                createMusicIcon(true);
+            }
+        }
+
+        // Create a single music icon
+        function createMusicIcon(initial = false) {
+            const icon = document.createElement('div');
+            icon.className = 'music-icon';
+            
+            // Random properties
+            const symbol = musicSymbols[Math.floor(Math.random() * musicSymbols.length)];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const size = Math.random() * 1.2 + 1.2; // 0.8rem to 1.6rem
+            const left = Math.random() * 100;
+            const speed = Math.random() * 2 + 10; // 1 to 3 seconds to reach top
+            const delay = initial ? Math.random() * 5 : 0;
+            const opacity = Math.random() * 0.5 + 0.3; // 0.3 to 0.8
+            
+            // Set styles
+            icon.textContent = symbol;
+            icon.style.color = color;
+            icon.style.fontSize = `${size}rem`;
+            icon.style.left = `${left}%`;
+            icon.style.bottom = initial ? `${Math.random() * 20}%` : '-5%';
+            icon.style.opacity = opacity;
+            icon.style.transform = `rotate(${Math.random() * 360}deg)`;
+            icon.style.animation = `floatUp ${speed}s linear ${delay}s infinite`;
+            
+            // Add to container
+            musicIconsContainer.appendChild(icon);
+            musicIcons.push(icon);
+            
+            // Remove icon when animation completes
+            icon.addEventListener('animationend', function() {
+                if (isPlaying) {
+                    // Reset position and animate again
+                    icon.style.bottom = '-5%';
+                    icon.style.left = `${Math.random() * 100}%`;
+                    icon.style.animation = `floatUp ${speed}s linear 0s infinite`;
+                } else {
+                    // Remove icon if not playing
+                    musicIconsContainer.removeChild(icon);
+                    musicIcons = musicIcons.filter(i => i !== icon);
+                }
+            });
+        }
+
+        // Animation for floating up
+        function addFloatingAnimation() {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes floatUp {
+                    0% {
+                        transform: translateY(0) rotate(${Math.random() * 360}deg);
+                        opacity: 0.7;
+                    }
+                    100% {
+                        transform: translateY(-105vh) rotate(${Math.random() * 360}deg);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Start music icons animation
+        function startMusicIconsAnimation() {
+            stopMusicIconsAnimation();
+            addFloatingAnimation();
+            
+            // Create initial icons
+            setupMusicIcons();
+            
+            // Add new icons periodically
+            const addIconInterval = setInterval(() => {
+                if (isPlaying && musicIcons.length < 50) {
+                    createMusicIcon();
+                }
+            }, 300);
+            
+            // Store interval ID to clear later
+            musicIconsContainer.dataset.intervalId = addIconInterval;
+        }
+
+        // Stop music icons animation
+        function stopMusicIconsAnimation() {
+            // Clear the interval for adding new icons
+            if (musicIconsContainer.dataset.intervalId) {
+                clearInterval(parseInt(musicIconsContainer.dataset.intervalId));
+            }
+            
+            // Clear all animations
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        // Fetch user's audiobooks from backend
+        async function fetchUserAudiobooks() {
+            try {
+                const response = await fetch('get_user_audiobooks.php');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch audiobooks');
+                }
+                const data = await response.json();
+                
+                if (data.success && data.audiobooks.length > 0) {
+                    audiobooks = data.audiobooks;
+                    renderAudiobookList();
+                } else {
+                    noBooksMessage.textContent = "You don't have any audiobooks in your subscription.";
+                }
+            } catch (error) {
+                console.error('Error fetching audiobooks:', error);
+                noBooksMessage.textContent = "Error loading your audiobooks. Please try again later.";
+            }
+        }
+
+        // Render the audiobook list
+        function renderAudiobookList() {
+            songList.innerHTML = '';
+            
+            audiobooks.forEach((audiobook, index) => {
+                const li = document.createElement('li');
+                li.className = 'song-item' + (index === currentSongIndex ? ' active' : '');
+                li.dataset.index = index;
+                
+                li.innerHTML = `
+                    <img src="${audiobook.poster_url || 'assets/default-audiobook-cover.jpg'}" 
+                         alt="Cover" class="song-cover">
+                    <div class="song-info">
+                        <div class="song-title">${audiobook.title}</div>
+                        <div class="song-artist">${audiobook.writer}</div>
+                    </div>
+                `;
+                
+                li.addEventListener('click', () => {
+                    currentSongIndex = index;
+                    loadSong(currentSongIndex);
+                    if (!isPlaying) {
+                        togglePlay();
+                    }
+                });
+                
+                songList.appendChild(li);
+            });
         }
 
         // Load song
         function loadSong(index) {
-            const song = songItems[index];
-            const { cover, title, artist, audio } = song.dataset;
+            if (audiobooks.length === 0) return;
+            
+            const audiobook = audiobooks[index];
             
             // Update UI
-            document.querySelector('.album-art').src = cover;
-            document.querySelector('.song-name').textContent = title;
-            document.querySelector('.artist-name').textContent = artist;
+            albumArt.src = audiobook.poster_url || 'assets/default-audiobook-cover.jpg';
+            albumArt.alt = audiobook.title;
+            songName.textContent = audiobook.title;
+            artistName.textContent = audiobook.writer;
             
-            // Update active state
+            // Update background art
+            backgroundArt.style.backgroundImage = `url(${audiobook.poster_url || 'assets/default-audiobook-cover.jpg'})`;
+            
+            // Update active state in list
+            const songItems = document.querySelectorAll('.song-item');
             songItems.forEach(item => item.classList.remove('active'));
-            song.classList.add('active');
-            
-            // Move to top of list
-            songList.insertBefore(song, songList.firstChild);
+            if (songItems[index]) {
+                songItems[index].classList.add('active');
+            }
             
             // Load audio
-            audioPlayer.src = audio;
+            audioPlayer.src = audiobook.audio_url;
             
             // If was playing, continue playback
             if (isPlaying) {
@@ -435,6 +628,8 @@
 
         // Play/pause toggle
         function togglePlay() {
+            if (audiobooks.length === 0) return;
+            
             if (isPlaying) {
                 audioPlayer.pause();
                 playBtn.innerHTML = '▶';
@@ -453,17 +648,21 @@
 
         // Previous song
         function prevSong() {
+            if (audiobooks.length === 0) return;
+            
             currentSongIndex--;
             if (currentSongIndex < 0) {
-                currentSongIndex = songItems.length - 1;
+                currentSongIndex = audiobooks.length - 1;
             }
             loadSong(currentSongIndex);
         }
 
         // Next song
         function nextSong() {
+            if (audiobooks.length === 0) return;
+            
             currentSongIndex++;
-            if (currentSongIndex > songItems.length - 1) {
+            if (currentSongIndex > audiobooks.length - 1) {
                 currentSongIndex = 0;
             }
             loadSong(currentSongIndex);
@@ -504,21 +703,12 @@
 
         // Format time (seconds to MM:SS)
         function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00";
+            
             const mins = Math.floor(seconds / 60);
             const secs = Math.floor(seconds % 60);
             return `${mins}:${secs < 10 ? '0' + secs : secs}`;
         }
-
-        // Song item click handler
-        songItems.forEach((item, index) => {
-            item.addEventListener('click', () => {
-                currentSongIndex = index;
-                loadSong(currentSongIndex);
-                if (!isPlaying) {
-                    togglePlay();
-                }
-            });
-        });
 
         // Initialize player when DOM loads
         document.addEventListener('DOMContentLoaded', initPlayer);

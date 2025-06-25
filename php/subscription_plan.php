@@ -14,7 +14,7 @@ require_once '../db_connection.php';
 $currentPlans = [];
 if (isset($_SESSION['user_id'])) {
     $userId = $_SESSION['user_id'];
-    $currentPlanQuery = "SELECT sp.*, us.*, 
+    $currentPlanQuery = "SELECT sp.*, us.user_subscription_id, us.*, 
                          DATEDIFF(us.end_date, NOW()) AS days_left,
                          us.available_audio AS audio_left,
                          us.available_rent_book AS books_left,
@@ -52,8 +52,38 @@ while ($row = $plansResult->fetch_assoc()) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subscription Plans</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-   <link rel="stylesheet" href="/BookHeaven2.0/css/subscriptions_plan.css">
+    <link rel="stylesheet" href="/BookHeaven2.0/css/subscriptions_plan.css">
+    <style>
+        .action-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .action-btn:hover {
+            background-color: var(--primary-dark);
+        }
+        .action-btn.warning {
+            background-color: #ff9800;
+        }
+        .action-btn.warning:hover {
+            background-color: #e68a00;
+        }
+        .action-btn.success {
+            background-color: #4caf50;
+            cursor: not-allowed;
+        }
+        .action-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
+
 <body>
     <?php include_once("../header.php") ?>
     <main>
@@ -90,7 +120,7 @@ while ($row = $plansResult->fetch_assoc()) {
                                 <td>
                                     <?php if ($plan['subscription_status'] === 'active'): ?>
                                         <button class="action-btn"
-                                            onclick="window.location.href='book_add_to_subscription.php?sub_id=<?php echo htmlspecialchars($plan['plan_id'] ?? ''); ?>'">
+                                            onclick="window.location.href='book_add_to_subscription.php?plan_type=<?= urlencode(strtolower($plan['plan_name'])) ?>&sub_id=<?= $plan['user_subscription_id'] ?>'">
                                             <i class="fas fa-plus"></i> Add Book
                                         </button>
                                     <?php else: ?>
@@ -112,8 +142,7 @@ while ($row = $plansResult->fetch_assoc()) {
                     </tbody>
                 </table>
             <?php else: ?>
-                <p class="no-plan">You don't have any active subscription plans. Please subscribe to access books and audio
-                    books.</p>
+                <p class="no-plan">You don't have any active subscription plans. Please subscribe to access books and audio books.</p>
             <?php endif; ?>
         </section>
 
@@ -195,6 +224,7 @@ while ($row = $plansResult->fetch_assoc()) {
             </div>
         </section>
     </main>
+
     <!-- Subscription Modal -->
     <div class="modal" id="subscriptionModal">
         <div class="modal-content">

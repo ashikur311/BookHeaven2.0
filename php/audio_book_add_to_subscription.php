@@ -1,12 +1,162 @@
+<?php
+// Start session and include database connection
+session_start();
+require_once('../db_connection.php');
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$sub_id = isset($_GET['sub_id']) ? intval($_GET['sub_id']) : null;
+$plan_type = isset($_GET['plan_type']) ? htmlspecialchars($_GET['plan_type']) : null;
+
+// Get user's specific subscription
+$subscription = null;
+if ($sub_id) {
+    $subscription_query = "SELECT us.*, sp.plan_name, sp.audiobook_quantity 
+                          FROM user_subscriptions us
+                          JOIN subscription_plans sp ON us.subscription_plan_id = sp.plan_id
+                          WHERE us.user_subscription_id = ? AND us.user_id = ? 
+                          AND us.status = 'active' AND us.end_date > NOW()";
+    $stmt = $conn->prepare($subscription_query);
+    $stmt->bind_param("ii", $sub_id, $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $subscription = $result->fetch_assoc();
+        
+        // Get count of used audiobooks
+        $used_audio_query = "SELECT COUNT(*) as used_count 
+                            FROM user_subscription_audiobook_access 
+                            WHERE user_subscription_id = ? AND status = 'borrowed'";
+        $stmt2 = $conn->prepare($used_audio_query);
+        $stmt2->bind_param("i", $subscription['user_subscription_id']);
+        $stmt2->execute();
+        $used_result = $stmt2->get_result();
+        $used_data = $used_result->fetch_assoc();
+        
+        $subscription['used_audio'] = $used_data['used_count'];
+        $subscription['remaining_audio'] = $subscription['audiobook_quantity'] - $used_data['used_count'];
+        
+        // Calculate days left
+        $end_date = new DateTime($subscription['end_date']);
+        $today = new DateTime();
+        $interval = $today->diff($end_date);
+        $subscription['days_left'] = $interval->days;
+    } else {
+        // Invalid or expired subscription
+        header("Location: subscription_plans.php");
+        exit();
+    }
+} else {
+    // No subscription ID provided
+    header("Location: subscription_plans.php");
+    exit();
+}
+
+// Get all genres from audiobooks
+$genres = array();
+$genre_query = "SELECT DISTINCT genre FROM audiobooks WHERE status = 'visible'";
+$genre_result = $conn->query($genre_query);
+while ($row = $genre_result->fetch_assoc()) {
+    $genres[] = $row['genre'];
+}
+
+// Get audiobooks based on selected genre (default to all)
+$selected_genre = isset($_GET['genre']) ? $_GET['genre'] : 'all';
+$audiobooks = array();
+
+$audiobook_query = "SELECT * FROM audiobooks WHERE status = 'visible'";
+if ($selected_genre != 'all') {
+    $audiobook_query .= " AND genre = ?";
+}
+
+$audiobook_query .= " ORDER BY title ASC";
+
+$stmt3 = $conn->prepare($audiobook_query);
+if ($selected_genre != 'all') {
+    $stmt3->bind_param("s", $selected_genre);
+}
+$stmt3->execute();
+$audiobook_result = $stmt3->get_result();
+
+while ($row = $audiobook_result->fetch_assoc()) {
+    // Check if user already has this audiobook in their subscription
+    $check_query = "SELECT * FROM user_subscription_audiobook_access 
+                   WHERE user_subscription_id = ? AND audiobook_id = ? AND status = 'borrowed'";
+    $stmt4 = $conn->prepare($check_query);
+    $stmt4->bind_param("ii", $subscription['user_subscription_id'], $row['audiobook_id']);
+    $stmt4->execute();
+    $check_result = $stmt4->get_result();
+    
+    $row['already_added'] = ($check_result->num_rows > 0);
+    $audiobooks[] = $row;
+}
+
+// Handle adding audiobook to subscription
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_audiobook'])) {
+    $audiobook_id = intval($_POST['audiobook_id']);
+    
+    // Check if user has remaining audiobook quota
+    if ($subscription['remaining_audio'] > 0) {
+        // Verify audiobook isn't already added
+        $check_query = "SELECT * FROM user_subscription_audiobook_access 
+                       WHERE user_subscription_id = ? AND audiobook_id = ? AND status = 'borrowed'";
+        $stmt5 = $conn->prepare($check_query);
+        $stmt5->bind_param("ii", $sub_id, $audiobook_id);
+        $stmt5->execute();
+        $check_result = $stmt5->get_result();
+        
+        if ($check_result->num_rows == 0) {
+            // Add to user's subscription
+            $add_query = "INSERT INTO user_subscription_audiobook_access 
+                         (user_subscription_id, audiobook_id, access_date, status, user_id)
+                         VALUES (?, ?, NOW(), 'borrowed', ?)";
+            $stmt6 = $conn->prepare($add_query);
+            $stmt6->bind_param("iii", $sub_id, $audiobook_id, $user_id);
+            
+            if ($stmt6->execute()) {
+                // Update subscription count
+                $update_query = "UPDATE user_subscriptions 
+                               SET available_audio = available_audio - 1 
+                               WHERE user_subscription_id = ?";
+                $stmt7 = $conn->prepare($update_query);
+                $stmt7->bind_param("i", $sub_id);
+                $stmt7->execute();
+                
+                $_SESSION['message'] = "Audiobook added to your subscription successfully!";
+                header("Location: audio_book_add_to_subscription.php?sub_id=$sub_id&plan_type=$plan_type");
+                exit();
+            } else {
+                $_SESSION['error'] = "Failed to add audiobook to your subscription.";
+            }
+        } else {
+            $_SESSION['error'] = "This audiobook is already in your subscription.";
+        }
+    } else {
+        $_SESSION['error'] = "You've reached your monthly audiobook limit. Please wait until your subscription renews.";
+    }
+    
+    header("Location: audio_book_add_to_subscription.php?sub_id=$sub_id&plan_type=$plan_type");
+    exit();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Subscription - Audio Books | BookHub</title>
+    <title>Add Audio Books to Subscription | BookHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/BookHeaven2.0/css/addbooktosubscription.css">
     <style>
-    :root {
+      :root {
         --primary-color: #57abd2;
         --primary-dark: #3d8eb4;
         --secondary-color: #f8f5fc;
@@ -76,6 +226,24 @@
         margin: 0 auto;
         width: 100%;
         flex: 1;
+    }
+
+    /* Error Message */
+    .error-message {
+        background-color: var(--danger-color);
+        color: white;
+        padding: 0.8rem 1rem;
+        border-radius: 5px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .error-message svg {
+        fill: white;
+        width: 18px;
+        height: 18px;
     }
 
     /* Compact Plan Overview Section */
@@ -217,7 +385,6 @@
         height: 100%;
         background-color: white;
         border-radius: 3px;
-        width: 70%;
     }
 
     .progress-text {
@@ -415,6 +582,11 @@
         background-color: var(--primary-dark);
     }
 
+    .add-button:disabled {
+        background-color: var(--text-light);
+        cursor: not-allowed;
+    }
+
     /* Genre Sidebar */
     .genre-sidebar {
         width: 250px;
@@ -445,6 +617,9 @@
         border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
     }
 
     .genre-item:hover {
@@ -578,228 +753,190 @@
             width: 100%;
         }
     }
-</style>
+    </style>
 </head>
 
 <body>
     <?php include_once("../header.php") ?>
+    
+    <!-- Display messages -->
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert success">
+            <?= $_SESSION['message']; unset($_SESSION['message']); ?>
+        </div>
+    <?php endif; ?>
+    
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert error">
+            <?= $_SESSION['error']; unset($_SESSION['error']); ?>
+        </div>
+    <?php endif; ?>
+    
     <main>
         <section>
-            <!-- Compact Plan Overview Section -->
-            <div class="plan-overview">
-                <div class="plan-header">
-                    <h1 class="plan-title">Premium Subscription</h1>
-                    <div class="plan-status">Active</div>
-                </div>
-                
-                <div class="plan-details-container">
-                    <div class="plan-features">
-                        <div class="feature-item">
-                            <div class="feature-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                    <path d="M21 5h-8v14h8V5zm-10 0H3v14h8V5z"/>
-                                </svg>
-                            </div>
-                            <div class="feature-text">
-                                <div class="feature-label">Audio Books per month</div>
-                                <div class="feature-value">5</div>
-                            </div>
-                        </div>
-                        
-                        <div class="feature-item">
-                            <div class="feature-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                                </svg>
-                            </div>
-                            <div class="feature-text">
-                                <div class="feature-label">Audio books remaining</div>
-                                <div class="feature-value">3</div>
-                            </div>
-                        </div>
-                        
-                        <div class="feature-item">
-                            <div class="feature-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-                                </svg>
-                            </div>
-                            <div class="feature-text">
-                                <div class="feature-label">Access to</div>
-                                <div class="feature-value">All Genres</div>
-                            </div>
-                        </div>
-                        
-                        <div class="feature-item">
-                            <div class="feature-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                    <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm0 4c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1.4c0-2 4-3.1 6-3.1s6 1.1 6 3.1V19z"/>
-                                </svg>
-                            </div>
-                            <div class="feature-text">
-                                <div class="feature-label">Premium Support</div>
-                                <div class="feature-value">24/7</div>
-                            </div>
-                        </div>
+            <?php if ($subscription): ?>
+                <!-- Compact Plan Overview Section -->
+                <div class="plan-overview">
+                    <div class="plan-header">
+                        <h1 class="plan-title"><?= htmlspecialchars($subscription['plan_name']) ?> Subscription</h1>
+                        <div class="plan-status">Active</div>
                     </div>
                     
-                    <div class="plan-progress">
-                        <div class="progress-item">
-                            <div class="progress-header">
-                                <div class="progress-title">Audio Books Remaining</div>
-                                <div class="progress-value">3/5</div>
+                    <div class="plan-details-container">
+                        <div class="plan-features">
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-headphones"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <div class="feature-label">Audio Books per month</div>
+                                    <div class="feature-value"><?= $subscription['audiobook_quantity'] ?></div>
+                                </div>
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 60%"></div>
+                            
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-music"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <div class="feature-label">Audio Books Used</div>
+                                    <div class="feature-value"><?= $subscription['used_audio'] ?></div>
+                                </div>
                             </div>
-                            <div class="progress-text">
-                                <span>Used: 2</span>
-                                <span>Reset: June 30</span>
+                            
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                                    </svg>
+                                </div>
+                                <div class="feature-text">
+                                    <div class="feature-label">Access to</div>
+                                    <div class="feature-value">All Genres</div>
+                                </div>
+                            </div>
+                            
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm0 4c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1.4c0-2 4-3.1 6-3.1s6 1.1 6 3.1V19z"/>
+                                    </svg>
+                                </div>
+                                <div class="feature-text">
+                                    <div class="feature-label">Premium Support</div>
+                                    <div class="feature-value">24/7</div>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="days-left">
-                            <div class="days-left-value">15</div>
-                            <div class="days-left-label">days left</div>
+                        <div class="plan-progress">
+                            <div class="progress-item">
+                                <div class="progress-header">
+                                    <div class="progress-title">Audio Books Remaining</div>
+                                    <div class="progress-value"><?= $subscription['remaining_audio'] ?>/<?= $subscription['audiobook_quantity'] ?></div>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: <?= ($subscription['remaining_audio'] / $subscription['audiobook_quantity']) * 100 ?>%"></div>
+                                </div>
+                                <div class="progress-text">
+                                    <span>Used: <?= $subscription['used_audio'] ?></span>
+                                    <span>Reset: <?= date('F j', strtotime($subscription['end_date'])) ?></span>
+                                </div>
+                            </div>
+                            
+                            <div class="days-left">
+                                <div class="days-left-value"><?= $subscription['days_left'] ?></div>
+                                <div class="days-left-label">days left</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Add Books Header Section -->
-            <div class="add-books-header">
-                <div class="header-container">
-                    <h2>Add Audio Books</h2>
-                    <a href="audio_book_add_to_subscription.php" class="add-book-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                        </svg>
-                        Add New Audio Book
-                    </a>
-                </div>
-            </div>
-
-            <!-- Catalog Section with Block Genre Display -->
-            <div class="catalog-container">
-                <aside class="genre-sidebar">
-                    <h3 class="genre-title">Browse Genres</h3>
-                    <div class="genre-list">
-                        <div class="genre-item active">All Genres</div>
-                        <div class="genre-item">Fiction</div>
-                        <div class="genre-item">Mystery & Thriller</div>
-                        <div class="genre-item">Science Fiction</div>
-                        <div class="genre-item">Fantasy</div>
-                        <div class="genre-item">Romance</div>
-                        <div class="genre-item">Biography</div>
-                        <div class="genre-item">History</div>
-                        <div class="genre-item">Self-Help</div>
-                        <div class="genre-item">Business</div>
-                    </div>
-                </aside>
-
-                <div class="book-grid">
-                    <!-- Audio Book Cards with Players -->
-                    <div class="book-card">
-                        <img src="https://via.placeholder.com/250x200/57abd2/ffffff?text=Audio+Book" alt="Audio Book Cover" class="book-cover">
-                        <div class="book-info">
-                            <h3 class="book-title">The Silent Patient</h3>
-                            <p class="book-author">Alex Michaelides</p>
-                            <div class="book-rating">
-                                <span class="star-icon">★</span> 4.5
-                            </div>
-                            <audio controls class="audio-player">
-                                <source src="sample-audio.mp3" type="audio/mpeg">
-                                Your browser does not support the audio element.
-                            </audio>
-                            <button class="add-button">Add to My Subscription</button>
-                        </div>
-                    </div>
-
-                    <div class="book-card">
-                        <img src="https://via.placeholder.com/250x200/3d8eb4/ffffff?text=Audio+Book" alt="Audio Book Cover" class="book-cover">
-                        <div class="book-info">
-                            <h3 class="book-title">Atomic Habits</h3>
-                            <p class="book-author">James Clear</p>
-                            <div class="book-rating">
-                                <span class="star-icon">★</span> 4.8
-                            </div>
-                            <audio controls class="audio-player">
-                                <source src="sample-audio.mp3" type="audio/mpeg">
-                                Your browser does not support the audio element.
-                            </audio>
-                            <button class="add-button">Add to My Subscription</button>
-                        </div>
-                    </div>
-
-                    <div class="book-card">
-                        <img src="https://via.placeholder.com/250x200/e6d9f2/333333?text=Audio+Book" alt="Audio Book Cover" class="book-cover">
-                        <div class="book-info">
-                            <h3 class="book-title">Project Hail Mary</h3>
-                            <p class="book-author">Andy Weir</p>
-                            <div class="book-rating">
-                                <span class="star-icon">★</span> 4.7
-                            </div>
-                            <audio controls class="audio-player">
-                                <source src="sample-audio.mp3" type="audio/mpeg">
-                                Your browser does not support the audio element.
-                            </audio>
-                            <button class="add-button">Add to My Subscription</button>
-                        </div>
-                    </div>
-
-                    <div class="book-card">
-                        <img src="https://via.placeholder.com/250x200/f8f5fc/333333?text=Audio+Book" alt="Audio Book Cover" class="book-cover">
-                        <div class="book-info">
-                            <h3 class="book-title">The Midnight Library</h3>
-                            <p class="book-author">Matt Haig</p>
-                            <div class="book-rating">
-                                <span class="star-icon">★</span> 4.3
-                            </div>
-                            <audio controls class="audio-player">
-                                <source src="sample-audio.mp3" type="audio/mpeg">
-                                Your browser does not support the audio element.
-                            </audio>
-                            <button class="add-button">Add to My Subscription</button>
-                        </div>
-                    </div>
-
-                    <div class="book-card">
-                        <img src="https://via.placeholder.com/250x200/dfdbe3/333333?text=Audio+Book" alt="Audio Book Cover" class="book-cover">
-                        <div class="book-info">
-                            <h3 class="book-title">Educated</h3>
-                            <p class="book-author">Tara Westover</p>
-                            <div class="book-rating">
-                                <span class="star-icon">★</span> 4.6
-                            </div>
-                            <audio controls class="audio-player">
-                                <source src="sample-audio.mp3" type="audio/mpeg">
-                                Your browser does not support the audio element.
-                            </audio>
-                            <button class="add-button">Add to My Subscription</button>
-                        </div>
-                    </div>
-
-                    <div class="book-card">
-                        <img src="https://via.placeholder.com/250x200/57abd2/ffffff?text=Audio+Book" alt="Audio Book Cover" class="book-cover">
-                        <div class="book-info">
-                            <h3 class="book-title">Where the Crawdads Sing</h3>
-                            <p class="book-author">Delia Owens</p>
-                            <div class="book-rating">
-                                <span class="star-icon">★</span> 4.8
-                            </div>
-                            <audio controls class="audio-player">
-                                <source src="sample-audio.mp3" type="audio/mpeg">
-                                Your browser does not support the audio element.
-                            </audio>
-                            <button class="add-button">Add to My Subscription</button>
-                        </div>
+                <!-- Add Books Header Section -->
+                <div class="add-books-header">
+                    <div class="header-container">
+                        <h2>Add Audio Books</h2>
+                        <a href="book_add_to_subscription.php?sub_id=<?= $sub_id ?>&plan_type=<?= $plan_type ?>" class="add-book-btn">
+                            <i class="fas fa-book"></i> Add Regular Books
+                        </a>
                     </div>
                 </div>
-            </div>
+
+                <!-- Catalog Section with Block Genre Display -->
+                <div class="catalog-container">
+                    <aside class="genre-sidebar">
+                        <h3 class="genre-title">Browse Genres</h3>
+                        <div class="genre-list">
+                            <a href="?sub_id=<?= $sub_id ?>&plan_type=<?= $plan_type ?>&genre=all" 
+                               class="genre-item <?= $selected_genre == 'all' ? 'active' : '' ?>">All Genres</a>
+                            <?php foreach ($genres as $genre): ?>
+                                <a href="?sub_id=<?= $sub_id ?>&plan_type=<?= $plan_type ?>&genre=<?= urlencode($genre) ?>" 
+                                   class="genre-item <?= $selected_genre == $genre ? 'active' : '' ?>">
+                                    <?= htmlspecialchars($genre) ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </aside>
+
+                    <div class="book-grid">
+                        <?php if (count($audiobooks) > 0): ?>
+                            <?php foreach ($audiobooks as $audiobook): ?>
+                                <div class="book-card">
+                                    <img src="/BookHeaven2.0/<?= htmlspecialchars($audiobook['poster_url'] ? $audiobook['poster_url'] : 'https://via.placeholder.com/250x200/57abd2/ffffff?text=Audio+Book') ?>" 
+                                         alt="<?= htmlspecialchars($audiobook['title']) ?>" class="book-cover">
+                                    <div class="book-info">
+                                        <h3 class="book-title"><?= htmlspecialchars($audiobook['title']) ?></h3>
+                                        <p class="book-author"><?= htmlspecialchars($audiobook['writer']) ?></p>
+                                        <div class="book-rating">
+                                            <span class="star-icon">★</span> 4.5
+                                        </div>
+                                        <audio controls class="audio-player" ontimeupdate="limitPlayback(this)">
+                                            <source src="<?= htmlspecialchars($audiobook['audio_url']) ?>" type="audio/mpeg">
+                                            Your browser does not support the audio element.
+                                        </audio>
+                                        <form method="post" action="">
+                                            <input type="hidden" name="audiobook_id" value="<?= $audiobook['audiobook_id'] ?>">
+                                            <button type="submit" name="add_audiobook" class="add-button" 
+                                                <?= ($audiobook['already_added'] || $subscription['remaining_audio'] <= 0) ? 'disabled' : '' ?>>
+                                                <?= $audiobook['already_added'] ? 'Already Added' : 'Add to My Subscription' ?>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="no-books">No audiobooks found in this category.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="no-subscription">
+                    <h2>Subscription Not Found or Expired</h2>
+                    <p>The subscription you're trying to access is either expired or doesn't exist.</p>
+                    <a href="/BookHeaven2.0/php/subscription_plans.php" class="subscribe-btn">View Subscription Plans</a>
+                </div>
+            <?php endif; ?>
         </section>
     </main>
     <?php include_once("../footer.php") ?>
-</body>
 
+    <script>
+        // Function to limit audio playback to 5 minutes (300 seconds)
+        function limitPlayback(audioElement) {
+            if (audioElement.currentTime > 300) { // 5 minutes in seconds
+                audioElement.pause();
+                audioElement.currentTime = 0;
+                alert('Preview limited to 5 minutes. Subscribe to listen to the full audiobook.');
+            }
+        }
+
+        // Disable right-click and context menu on audio elements to prevent download
+        document.querySelectorAll('audio').forEach(audio => {
+            audio.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+        });
+    </script>
+</body>
 </html>

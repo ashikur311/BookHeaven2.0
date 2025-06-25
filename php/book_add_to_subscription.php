@@ -10,44 +10,46 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
+$sub_id = isset($_GET['sub_id']) ? intval($_GET['sub_id']) : null;
+$plan_type = isset($_GET['plan_type']) ? htmlspecialchars($_GET['plan_type']) : null;
 
-// Get user's active subscription
+// Get user's specific subscription
 $subscription = null;
-$subscription_query = "SELECT * FROM user_subscriptions WHERE user_id = ? AND status = 'active' AND end_date > NOW() ORDER BY end_date DESC LIMIT 1";
-$stmt = $conn->prepare($subscription_query);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$subscription_result = $stmt->get_result();
+if ($sub_id) {
+    $subscription_query = "SELECT us.*, sp.* 
+                         FROM user_subscriptions us
+                         JOIN subscription_plans sp ON us.subscription_plan_id = sp.plan_id
+                         WHERE us.user_subscription_id = ? AND us.user_id = ? 
+                         AND us.status = 'active' AND us.end_date > NOW()";
+    $stmt = $conn->prepare($subscription_query);
+    $stmt->bind_param("ii", $sub_id, $user_id);
+    $stmt->execute();
+    $subscription_result = $stmt->get_result();
 
-if ($subscription_result->num_rows > 0) {
-    $subscription = $subscription_result->fetch_assoc();
-    
-    // Get subscription plan details
-    $plan_query = "SELECT * FROM subscription_plans WHERE plan_id = ?";
-    $stmt = $conn->prepare($plan_query);
-    $stmt->bind_param("i", $subscription['subscription_plan_id']);
-    $stmt->execute();
-    $plan_result = $stmt->get_result();
-    $plan = $plan_result->fetch_assoc();
-    
-    // Calculate days left in subscription
-    $end_date = new DateTime($subscription['end_date']);
-    $today = new DateTime();
-    $days_left = $today->diff($end_date)->days;
-    
-    // Count books already added to subscription
-    $books_used_query = "SELECT COUNT(*) as count FROM user_subscription_rent_book_access WHERE user_subscription_id = ?";
-    $stmt = $conn->prepare($books_used_query);
-    $stmt->bind_param("i", $subscription['user_subscription_id']);
-    $stmt->execute();
-    $books_used_result = $stmt->get_result();
-    $books_used = $books_used_result->fetch_assoc()['count'];
-    
-    // Calculate remaining books
-    $books_remaining = $plan['book_quantity'] - $books_used;
-    
-    // Calculate progress percentage
-    $books_progress = ($books_used / $plan['book_quantity']) * 100;
+    if ($subscription_result->num_rows > 0) {
+        $subscription = $subscription_result->fetch_assoc();
+        $plan = $subscription; // Since we joined the tables
+        
+        // Calculate days left in subscription
+        $end_date = new DateTime($subscription['end_date']);
+        $today = new DateTime();
+        $days_left = $today->diff($end_date)->days;
+        
+        // Count books already added to this subscription
+        $books_used_query = "SELECT COUNT(*) as count FROM user_subscription_rent_book_access 
+                            WHERE user_subscription_id = ?";
+        $stmt = $conn->prepare($books_used_query);
+        $stmt->bind_param("i", $sub_id);
+        $stmt->execute();
+        $books_used_result = $stmt->get_result();
+        $books_used = $books_used_result->fetch_assoc()['count'];
+        
+        // Calculate remaining books
+        $books_remaining = $plan['book_quantity'] - $books_used;
+        
+        // Calculate progress percentage
+        $books_progress = ($books_used / $plan['book_quantity']) * 100;
+    }
 }
 
 // Get all unique genres from rent_books table for sidebar
@@ -82,48 +84,47 @@ while ($row = $book_result->fetch_assoc()) {
 }
 
 // Handle adding book to subscription
-if (isset($_POST['add_book'])) {
+if (isset($_POST['add_book']) && $subscription) {
     $rent_book_id = intval($_POST['rent_book_id']);
     
-    if ($subscription && $books_remaining > 0) {
+    if ($books_remaining > 0) {
         // Check if book is already in subscription
         $check_query = "SELECT * FROM user_subscription_rent_book_access 
-                        WHERE user_subscription_id = ? AND rent_book_id = ?";
+                       WHERE user_subscription_id = ? AND rent_book_id = ?";
         $stmt = $conn->prepare($check_query);
-        $stmt->bind_param("ii", $subscription['user_subscription_id'], $rent_book_id);
+        $stmt->bind_param("ii", $sub_id, $rent_book_id);
         $stmt->execute();
         $check_result = $stmt->get_result();
         
         if ($check_result->num_rows == 0) {
             // Add book to subscription
             $add_query = "INSERT INTO user_subscription_rent_book_access 
-                          (user_subscription_id, rent_book_id, access_date, status, user_id)
-                          VALUES (?, ?, NOW(), 'borrowed', ?)";
+                         (user_subscription_id, rent_book_id, access_date, status, user_id)
+                         VALUES (?, ?, NOW(), 'borrowed', ?)";
             $stmt = $conn->prepare($add_query);
-            $stmt->bind_param("iii", $subscription['user_subscription_id'], $rent_book_id, $user_id);
+            $stmt->bind_param("iii", $sub_id, $rent_book_id, $user_id);
             $stmt->execute();
             
             // Update books used count in user_subscriptions table
             $update_query = "UPDATE user_subscriptions 
-                            SET used_audio_book = used_audio_book + 1 
+                            SET available_rent_book = available_rent_book - 1 
                             WHERE user_subscription_id = ?";
             $stmt = $conn->prepare($update_query);
-            $stmt->bind_param("i", $subscription['user_subscription_id']);
+            $stmt->bind_param("i", $sub_id);
             $stmt->execute();
             
-            // Update local variables
-            $books_used++;
-            $books_remaining--;
-            $books_progress = ($books_used / $plan['book_quantity']) * 100;
-            
             $_SESSION['message'] = "Book added to your subscription successfully!";
-            header("Location: addbooktosubscription.php");
+            header("Location: book_add_to_subscription.php?sub_id=$sub_id&plan_type=$plan_type");
             exit();
         } else {
             $_SESSION['error'] = "This book is already in your subscription.";
+            header("Location: book_add_to_subscription.php?sub_id=$sub_id&plan_type=$plan_type");
+            exit();
         }
     } else {
         $_SESSION['error'] = "You've reached your book limit for this subscription period.";
+        header("Location: book_add_to_subscription.php?sub_id=$sub_id&plan_type=$plan_type");
+        exit();
     }
 }
 ?>
@@ -134,146 +135,10 @@ if (isset($_POST['add_book'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Subscription | BookHub</title>
+    <title>Add Books to Subscription | BookHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/BookHeaven2.0/css/addbooktosubscription.css">
-    <style>
-        /* Additional CSS for improved layout */
-        .book-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 20px;
-            width: 100%;
-        }
-        
-        .book-card {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-            background: white;
-        }
-        
-        .book-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .book-cover {
-            width: 100%;
-            height: 300px;
-            object-fit: cover;
-        }
-        
-        .book-info {
-            padding: 15px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .book-title {
-            font-size: 1rem;
-            margin: 0 0 5px 0;
-            color: #333;
-        }
-        
-        .book-author, .book-genre {
-            font-size: 0.85rem;
-            margin: 0 0 5px 0;
-            color: #666;
-        }
-        
-        .add-button {
-            margin-top: auto;
-            padding: 8px 12px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background-color 0.3s;
-        }
-        
-        .add-button:hover {
-            background-color: #45a049;
-        }
-        
-        .add-button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        
-        .catalog-container {
-            display: flex;
-            gap: 20px;
-            margin-top: 30px;
-        }
-        
-        .genre-sidebar {
-            flex: 0 0 200px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .genre-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .genre-item {
-            padding: 8px 12px;
-            border-radius: 4px;
-            color: #333;
-            text-decoration: none;
-            transition: background-color 0.3s;
-        }
-        
-        .genre-item:hover, .genre-item.active {
-            background-color: #f0f0f0;
-            color: #4CAF50;
-        }
-        
-        .genre-title {
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            color: #333;
-        }
-        
-        .add-books-header {
-            margin-top: 30px;
-        }
-        
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .add-audiobook-btn {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 8px 15px;
-            background-color: #2196F3;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-        
-        .add-audiobook-btn:hover {
-            background-color: #0b7dda;
-        }
-    </style>
 </head>
-
 <body>
     <?php include_once("../header.php") ?>
     
@@ -377,12 +242,8 @@ if (isset($_POST['add_book'])) {
                 <section class="add-books-header">
                     <div class="header-container">
                         <h2>Add Rent Books</h2>
-                        <a href="audio_book_add_to_subscription.php" class="add-audiobook-btn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                            </svg>
-                            Add Audio Book
+                        <a href="audio_book_add_to_subscription.php?sub_id=<?= $sub_id ?>&plan_type=<?= $plan_type ?>" class="add-audiobook-btn">
+                            <i class="fas fa-headphones"></i> Add Audio Books
                         </a>
                     </div>
                 </section>
@@ -392,9 +253,11 @@ if (isset($_POST['add_book'])) {
                     <aside class="genre-sidebar">
                         <h3 class="genre-title">Browse Genres</h3>
                         <div class="genre-list">
-                            <a href="?genre=all" class="genre-item <?= $selected_genre === 'all' ? 'active' : '' ?>">All Genres</a>
+                            <a href="?sub_id=<?= $sub_id ?>&plan_type=<?= $plan_type ?>&genre=all" 
+                               class="genre-item <?= $selected_genre === 'all' ? 'active' : '' ?>">All Genres</a>
                             <?php foreach ($genres as $genre): ?>
-                                <a href="?genre=<?= urlencode($genre) ?>" class="genre-item <?= $selected_genre === $genre ? 'active' : '' ?>">
+                                <a href="?sub_id=<?= $sub_id ?>&plan_type=<?= $plan_type ?>&genre=<?= urlencode($genre) ?>" 
+                                   class="genre-item <?= $selected_genre === $genre ? 'active' : '' ?>">
                                     <?= htmlspecialchars($genre) ?>
                                 </a>
                             <?php endforeach; ?>
@@ -405,7 +268,7 @@ if (isset($_POST['add_book'])) {
                         <?php if (count($rent_books) > 0): ?>
                             <?php foreach ($rent_books as $book): ?>
                                 <div class="book-card">
-                                    <img src="<?= htmlspecialchars($book['poster_url'] ?: 'https://via.placeholder.com/200x250/57abd2/ffffff?text=Book+Cover') ?>" 
+                                    <img src="/BookHeaven2.0/<?= htmlspecialchars($book['poster_url']) ?>"
                                          alt="<?= htmlspecialchars($book['title']) ?>" class="book-cover">
                                     <div class="book-info">
                                         <h3 class="book-title"><?= htmlspecialchars($book['title']) ?></h3>
@@ -428,14 +291,18 @@ if (isset($_POST['add_book'])) {
                 </div>
             <?php else: ?>
                 <div class="no-subscription">
-                    <h2>You don't have an active subscription</h2>
-                    <p>To access our book collection, please subscribe to one of our plans.</p>
-                    <a href="/BookHeaven2.0/subscription.php" class="subscribe-btn">View Subscription Plans</a>
+                    <?php if ($sub_id): ?>
+                        <h2>Subscription Not Found or Expired</h2>
+                        <p>The subscription you're trying to access is either expired or doesn't exist.</p>
+                    <?php else: ?>
+                        <h2>You don't have an active subscription</h2>
+                        <p>To access our book collection, please subscribe to one of our plans.</p>
+                    <?php endif; ?>
+                    <a href="/BookHeaven2.0/php/subscription_plan.php" class="subscribe-btn">View Subscription Plans</a>
                 </div>
             <?php endif; ?>
         </section>
     </main>
     <?php include_once("../footer.php") ?>
 </body>
-
 </html>
