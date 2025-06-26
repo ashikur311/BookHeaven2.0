@@ -109,7 +109,7 @@ $dob = isset($user_data['birthday']) ? date('F j, Y', strtotime($user_data['birt
             <section class="user-info">
                <img src="/BookHeaven2.0/<?php echo htmlspecialchars($user_data['user_profile'] ?? 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'); ?>"
                             alt="<?php echo htmlspecialchars($user_data['username']); ?>" class="user-avatar">
-                 <!-- <img src="/BookHeaven2.0/assets\user_profile\akash.jpg" alt="" class="user-avatar"> -->
+                 <!-- <img src="/BookHeaven2.0/assets/user_image/akash.jpg" alt="" class="user-avatar"> -->
                 <div>
                     <div class="user-name"><?php echo htmlspecialchars($user_data['username']); ?></div>
                     <small>Member since: <?php echo date('M Y', strtotime($user_data['create_time'])); ?></small>

@@ -16,6 +16,7 @@
           --card-bg: #f8f9fa;
           --aside-bg: #f0f2f5;
           --nav-hover: #e0e0e0;
+          --box-shadow: 0 0 3rem rgba(0, 0, 0, 0.2);
         }
 
         .dark-mode {
@@ -29,6 +30,7 @@
           --card-bg: #1a202c;
           --aside-bg: #1a202c;
           --nav-hover: #4a5568;
+           --box-shadow: 0 0 3rem rgba(255, 255, 255, 0.2);
         }
 
         * {
@@ -58,6 +60,8 @@
             flex: 0 0 300px;
             background-color: var(--aside-bg);
             border-radius: 10px;
+             border: 2px solid #3498db;
+            box-shadow: var( --box-shadow);
             padding: 20px;
             overflow-y: auto;
             height: calc(100vh - 120px);
@@ -67,6 +71,8 @@
             flex: 1;
             background-color: var(--card-bg);
             border-radius: 10px;
+            border: 2px solid #3498db;
+            box-shadow: var( --box-shadow);
             padding: 20px;
             display: flex;
             flex-direction: column;
