@@ -1,6 +1,191 @@
+<?php
+session_start();
+require_once("../../db_connection.php");
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+  header("Location: ../../login.php");
+  exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (isset($_POST['create_community'])) {
+    // Create new community
+    $name = $_POST['community_name'];
+    $description = $_POST['community_description'];
+    $privacy = $_POST['privacy'];
+
+    // Handle file upload
+    $cover_image_url = null;
+    if (isset($_FILES['cover_image']) && $_FILES['cover_image']['error'] === UPLOAD_ERR_OK) {
+      $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BookHeaven2.0/assets/community_images/';
+      
+      // Create directory if it doesn't exist
+      if (!file_exists($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
+      }
+      
+      $file_name = strtolower(str_replace(' ', '_', $name)) . '_' . time() . '.' . pathinfo($_FILES['cover_image']['name'], PATHINFO_EXTENSION);
+      $target_file = $upload_dir . $file_name;
+
+      // Check if image file is a actual image
+      $check = getimagesize($_FILES['cover_image']['tmp_name']);
+      if ($check !== false) {
+        if (move_uploaded_file($_FILES['cover_image']['tmp_name'], $target_file)) {
+          $cover_image_url = '/BookHeaven2.0/assets/community_images/' . $file_name;
+        } else {
+          $_SESSION['error_message'] = "Sorry, there was an error uploading your file.";
+        }
+      } else {
+        $_SESSION['error_message'] = "File is not an image.";
+      }
+    }
+
+    // Insert into database
+    $stmt = $conn->prepare("INSERT INTO communities (name, description, created_by, cover_image_url, privacy) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssiss", $name, $description, $user_id, $cover_image_url, $privacy);
+    if ($stmt->execute()) {
+      $community_id = $stmt->insert_id;
+      $stmt->close();
+
+      // Add creator as admin
+      $stmt = $conn->prepare("INSERT INTO community_members (community_id, user_id, role) VALUES (?, ?, 'admin')");
+      $stmt->bind_param("ii", $community_id, $user_id);
+      $stmt->execute();
+      $stmt->close();
+
+      $_SESSION['success_message'] = "Community created successfully!";
+    } else {
+      $_SESSION['error_message'] = "Error creating community: " . $conn->error;
+    }
+    
+    header("Location: community_dashboard.php");
+    exit();
+  } elseif (isset($_POST['join_community'])) {
+    // Join existing community
+    $community_id = $_POST['community_id'];
+
+    // Check if already a member
+    $stmt = $conn->prepare("SELECT * FROM community_members WHERE community_id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $community_id, $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 0) {
+      // Add as member
+      $stmt = $conn->prepare("INSERT INTO community_members (community_id, user_id, role) VALUES (?, ?, 'member')");
+      $stmt->bind_param("ii", $community_id, $user_id);
+      $stmt->execute();
+      $stmt->close();
+
+      $_SESSION['success_message'] = "You have joined the community!";
+    } else {
+      $_SESSION['error_message'] = "You are already a member of this community.";
+    }
+
+    header("Location: community_dashboard.php");
+    exit();
+  }
+}
+
+// Get all communities (for discovery section)
+$discover_communities = [];
+$stmt = $conn->prepare("
+    SELECT c.*, COUNT(cm.user_id) as member_count 
+    FROM communities c
+    LEFT JOIN community_members cm ON c.community_id = cm.community_id
+    WHERE c.community_id NOT IN (
+        SELECT community_id FROM community_members WHERE user_id = ?
+    )
+    AND c.status = 'active'
+    GROUP BY c.community_id
+    ORDER BY member_count DESC
+    LIMIT 10
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+  $discover_communities[] = $row;
+}
+$stmt->close();
+
+// Get user's communities
+$user_communities = [];
+$stmt = $conn->prepare("
+    SELECT c.*, cm.role, COUNT(cm2.user_id) as member_count 
+    FROM communities c
+    JOIN community_members cm ON c.community_id = cm.community_id
+    LEFT JOIN community_members cm2 ON c.community_id = cm2.community_id
+    WHERE cm.user_id = ? AND cm.status = 'active' AND c.status = 'active'
+    GROUP BY c.community_id
+    ORDER BY cm.role DESC, c.created_at DESC
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+  $user_communities[] = $row;
+}
+$stmt->close();
+
+// Get stats for dashboard
+$stats = [
+  'joined' => 0,
+  'created' => 0,
+  'members' => 0,
+  'posts' => 0
+];
+
+// Count joined communities
+$stmt = $conn->prepare("SELECT COUNT(*) as count FROM community_members WHERE user_id = ? AND status = 'active'");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$stats['joined'] = $result->fetch_assoc()['count'];
+$stmt->close();
+
+// Count created communities
+$stmt = $conn->prepare("SELECT COUNT(*) as count FROM communities WHERE created_by = ? AND status = 'active'");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$stats['created'] = $result->fetch_assoc()['count'];
+$stmt->close();
+
+// Count total members in user's communities
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as count 
+    FROM community_members cm
+    JOIN communities c ON cm.community_id = c.community_id
+    JOIN community_members cm2 ON c.community_id = cm2.community_id
+    WHERE cm.user_id = ? AND cm.status = 'active' AND c.status = 'active'
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$stats['members'] = $result->fetch_assoc()['count'];
+$stmt->close();
+
+// Count total posts in user's communities
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as count 
+    FROM community_posts cp
+    JOIN community_members cm ON cp.community_id = cm.community_id
+    WHERE cm.user_id = ? AND cm.status = 'active' AND cp.status = 'active'
+");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$stats['posts'] = $result->fetch_assoc()['count'];
+$stmt->close();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -437,59 +622,39 @@
 
 <body>
   <?php include_once("../../header.php"); ?>
+
+  <?php if (isset($_SESSION['success_message'])): ?>
+    <div class="alert alert-success">
+      <?= $_SESSION['success_message']; ?>
+      <?php unset($_SESSION['success_message']); ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if (isset($_SESSION['error_message'])): ?>
+    <div class="alert alert-danger">
+      <?= $_SESSION['error_message']; ?>
+      <?php unset($_SESSION['error_message']); ?>
+    </div>
+  <?php endif; ?>
+
   <main>
     <aside>
       <h2>Discover Communities</h2>
       <div class="community-list">
-        <div class="community-item">
-          <div class="community-info">
-            <div class="community-name">Web Developers</div>
-            <div class="community-members">12,345 members</div>
+        <?php foreach ($discover_communities as $community): ?>
+          <div class="community-item">
+            <div class="community-info">
+              <div class="community-name"><?= htmlspecialchars($community['name']); ?></div>
+              <div class="community-members"><?= $community['member_count']; ?> members</div>
+            </div>
+            <button class="join-btn"
+              onclick="openJoinModal(<?= $community['community_id']; ?>, '<?= addslashes($community['name']); ?>')">Join</button>
           </div>
-          <button class="join-btn" onclick="openJoinModal()">Join</button>
-        </div>
-        <div class="community-item">
-          <div class="community-info">
-            <div class="community-name">Design Enthusiasts</div>
-            <div class="community-members">8,765 members</div>
-          </div>
-          <button class="join-btn" onclick="openJoinModal()">Join</button>
-        </div>
-        <div class="community-item">
-          <div class="community-info">
-            <div class="community-name">Tech Startups</div>
-            <div class="community-members">5,432 members</div>
-          </div>
-          <button class="join-btn" onclick="openJoinModal()">Join</button>
-        </div>
-        <div class="community-item">
-          <div class="community-info">
-            <div class="community-name">Digital Marketing</div>
-            <div class="community-members">7,890 members</div>
-          </div>
-          <button class="join-btn" onclick="openJoinModal()">Join</button>
-        </div>
-        <div class="community-item">
-          <div class="community-info">
-            <div class="community-name">AI & Machine Learning</div>
-            <div class="community-members">15,678 members</div>
-          </div>
-          <button class="join-btn" onclick="openJoinModal()">Join</button>
-        </div>
-        <div class="community-item">
-          <div class="community-info">
-            <div class="community-name">Mobile App Development</div>
-            <div class="community-members">6,543 members</div>
-          </div>
-          <button class="join-btn" onclick="openJoinModal()">Join</button>
-        </div>
-        <div class="community-item">
-          <div class="community-info">
-            <div class="community-name">UX/UI Designers</div>
-            <div class="community-members">9,876 members</div>
-          </div>
-          <button class="join-btn" onclick="openJoinModal()">Join</button>
-        </div>
+        <?php endforeach; ?>
+
+        <?php if (empty($discover_communities)): ?>
+          <p>No communities to discover at the moment.</p>
+        <?php endif; ?>
       </div>
       <button class="create-community-btn" onclick="openCreateModal()">
         <i class="fas fa-plus"></i> Create New Community
@@ -501,67 +666,52 @@
 
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-value">8</div>
+          <div class="stat-value"><?= $stats['joined']; ?></div>
           <div class="stat-label">Communities Joined</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">3</div>
+          <div class="stat-value"><?= $stats['created']; ?></div>
           <div class="stat-label">Communities Created</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">24</div>
+          <div class="stat-value"><?= $stats['members']; ?></div>
           <div class="stat-label">Total Members</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">156</div>
+          <div class="stat-value"><?= $stats['posts']; ?></div>
           <div class="stat-label">Total Posts</div>
         </div>
       </div>
 
       <div class="joined-communities">
         <h2 class="section-title">Your Communities</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Community Name</th>
-              <th>Members</th>
-              <th>Role</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Web Developers</td>
-              <td>12,345</td>
-              <td>Member</td>
-              <td><button class="view-btn"
-                  onclick="window.location.href='community_dashboard.php?community=web_developers'">View</button></td>
-            </tr>
-            <tr>
-              <td>Design Enthusiasts</td>
-              <td>8,765</td>
-              <td>Admin</td>
-              <td><button class="view-btn"
-                  onclick="window.location.href='community_dashboard.php?community=design_enthusiasts'">View</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Tech Startups</td>
-              <td>5,432</td>
-              <td>Moderator</td>
-              <td><button class="view-btn"
-                  onclick="window.location.href='community_dashboard.php?community=tech_startups'">View</button></td>
-            </tr>
-            <tr>
-              <td>Digital Marketing</td>
-              <td>7,890</td>
-              <td>Member</td>
-              <td><button class="view-btn"
-                  onclick="window.location.href='community_dashboard.php?community=digital_marketing'">View</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <?php if (!empty($user_communities)): ?>
+          <table>
+            <thead>
+              <tr>
+                <th>Community Name</th>
+                <th>Members</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($user_communities as $community): ?>
+                <tr>
+                  <td><?= htmlspecialchars($community['name']); ?></td>
+                  <td><?= $community['member_count']; ?></td>
+                  <td><?= ucfirst($community['role']); ?></td>
+                  <td>
+                    <button class="view-btn"
+                      onclick="window.location.href='community_dashboard.php?id=<?= $community['community_id']; ?>'">View</button>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php else: ?>
+          <p>You haven't joined any communities yet. Join or create one to get started!</p>
+        <?php endif; ?>
       </div>
     </div>
   </main>
@@ -573,27 +723,32 @@
       <div class="modal-header">
         <h2 class="modal-title">Join Community</h2>
       </div>
-      <div class="rules-content">
-        <h3>Community Rules</h3>
-        <p>1. Be respectful to all members. Harassment, hate speech, or discrimination of any kind will not be
-          tolerated.</p>
-        <p>2. Stay on topic. Posts should be relevant to the community's purpose.</p>
-        <p>3. No spam or self-promotion without permission from the moderators.</p>
-        <p>4. Keep discussions civil. Disagreements are fine, but personal attacks are not.</p>
-        <p>5. Respect privacy. Do not share personal information about yourself or others.</p>
-        <p>6. Follow all applicable laws and regulations.</p>
-        <p>7. The moderators reserve the right to remove any content or members that violate these rules.</p>
-        <p>By joining this community, you agree to abide by these rules. Violations may result in removal from the
-          community.</p>
-      </div>
-      <div class="agree-checkbox">
-        <input type="checkbox" id="agreeRules">
-        <label for="agreeRules">I have read and agree to the community rules</label>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('joinModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="joinCommunity()">Join Community</button>
-      </div>
+      <form id="joinCommunityForm" method="post">
+        <input type="hidden" name="community_id" id="joinCommunityId">
+        <input type="hidden" name="join_community" value="1">
+
+        <div class="rules-content">
+          <h3 id="communityRulesTitle">Community Rules</h3>
+          <p>1. Be respectful to all members. Harassment, hate speech, or discrimination of any kind will not be
+            tolerated.</p>
+          <p>2. Stay on topic. Posts should be relevant to the community's purpose.</p>
+          <p>3. No spam or self-promotion without permission from the moderators.</p>
+          <p>4. Keep discussions civil. Disagreements are fine, but personal attacks are not.</p>
+          <p>5. Respect privacy. Do not share personal information about yourself or others.</p>
+          <p>6. Follow all applicable laws and regulations.</p>
+          <p>7. The moderators reserve the right to remove any content or members that violate these rules.</p>
+          <p>By joining this community, you agree to abide by these rules. Violations may result in removal from the
+            community.</p>
+        </div>
+        <div class="agree-checkbox">
+          <input type="checkbox" id="agreeRules" name="agree_rules" required>
+          <label for="agreeRules">I have read and agree to the community rules</label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('joinModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Join Community</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -604,22 +759,24 @@
       <div class="modal-header">
         <h2 class="modal-title">Create New Community</h2>
       </div>
-      <form id="createCommunityForm">
+      <form id="createCommunityForm" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="create_community" value="1">
+
         <div class="form-group">
-          <label for="communityName" class="form-label">Community Name</label>
-          <input type="text" id="communityName" class="form-control" required>
+          <label for="communityName" class="form-label">Community Name *</label>
+          <input type="text" id="communityName" name="community_name" class="form-control" required maxlength="100">
         </div>
         <div class="form-group">
-          <label for="communityDescription" class="form-label">Description</label>
-          <textarea id="communityDescription" class="form-control" required></textarea>
+          <label for="communityDescription" class="form-label">Description *</label>
+          <textarea id="communityDescription" name="community_description" class="form-control" required></textarea>
         </div>
         <div class="form-group">
-          <label for="coverImage" class="form-label">Cover Image URL</label>
-          <input type="file" id="coverImage" class="form-control">
+          <label for="coverImage" class="form-label">Cover Image</label>
+          <input type="file" id="coverImage" name="cover_image" class="form-control" accept="image/*">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Privacy</label>
+          <label class="form-label">Privacy *</label>
           <div>
             <input type="radio" id="public" name="privacy" value="public" checked>
             <label for="public">Public (Anyone can join)</label>
@@ -629,11 +786,12 @@
             <label for="private">Private (Requires approval to join)</label>
           </div>
         </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('createModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Community</button>
+        </div>
       </form>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('createModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="createCommunity()">Create Community</button>
-      </div>
     </div>
   </div>
 
@@ -641,7 +799,9 @@
 
   <script>
     // Modal functions
-    function openJoinModal() {
+    function openJoinModal(communityId, communityName) {
+      document.getElementById('joinCommunityId').value = communityId;
+      document.getElementById('communityRulesTitle').textContent = communityName + " Rules";
       document.getElementById('joinModal').style.display = 'flex';
     }
 
@@ -653,36 +813,31 @@
       document.getElementById(modalId).style.display = 'none';
     }
 
-    function joinCommunity() {
-      if (document.getElementById('agreeRules').checked) {
-        alert('You have successfully joined the community!');
-        closeModal('joinModal');
-      } else {
-        alert('Please agree to the community rules before joining.');
-      }
-    }
-
-    function createCommunity() {
-      const name = document.getElementById('communityName').value;
-      const description = document.getElementById('communityDescription').value;
-
-      if (name && description) {
-        alert(`Community "${name}" created successfully!`);
-        closeModal('createModal');
-        // Here you would typically submit the form data to your backend
-        document.getElementById('createCommunityForm').reset();
-      } else {
-        alert('Please fill in all required fields.');
-      }
-    }
-
     // Close modal when clicking outside of it
     window.onclick = function (event) {
       if (event.target.className === 'modal') {
         event.target.style.display = 'none';
       }
     }
+
+    // Form validation for create community
+    document.getElementById('createCommunityForm').addEventListener('submit', function (e) {
+      const name = document.getElementById('communityName').value.trim();
+      const description = document.getElementById('communityDescription').value.trim();
+
+      if (!name || !description) {
+        e.preventDefault();
+        alert('Please fill in all required fields.');
+      }
+    });
+
+    // Form validation for join community
+    document.getElementById('joinCommunityForm').addEventListener('submit', function (e) {
+      if (!document.getElementById('agreeRules').checked) {
+        e.preventDefault();
+        alert('Please agree to the community rules before joining.');
+      }
+    });
   </script>
 </body>
-
 </html>

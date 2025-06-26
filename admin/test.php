@@ -1,743 +1,579 @@
 <?php
 session_start();
-require_once 'db.php';
+if (!isset($_SESSION['user_id'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Session expired']);
+    exit();
+}
+include_once("../../db_connection.php");
+
+// Set the default timezone
+date_default_timezone_set('Asia/Dhaka');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: /BookHeaven2.0/php/authentication.php");
     exit();
 }
 
-// Get user data
 $user_id = $_SESSION['user_id'];
-try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ?");
-    $stmt->execute([$user_id]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+$community_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+// Check if user is member of this community
+if ($community_id > 0) {
+    $member_check = "SELECT * FROM community_members 
+                    WHERE community_id = ? AND user_id = ? AND status = 'active'";
+    $stmt = $conn->prepare($member_check);
+    $stmt->bind_param("ii", $community_id, $user_id);
+    $stmt->execute();
+    $is_member = $stmt->get_result()->num_rows > 0;
     
-    if (!$user) {
-        header("Location: logout.php");
+    if (!$is_member) {
+        header("Location: community_dashboard.php");
         exit();
     }
-    
-    // Check if user is a partner
-    $is_partner = false;
-    $partner_stmt = $pdo->prepare("SELECT * FROM partners WHERE user_id = ?");
-    $partner_stmt->execute([$user_id]);
-    if ($partner_stmt->fetch()) {
-        $is_partner = true;
-    }
-    
-} catch (PDOException $e) {
-    die("Error fetching user data: " . $e->getMessage());
 }
 
-// Handle theme preference
-$theme = $_COOKIE['theme'] ?? 'light';
-if (isset($_GET['theme'])) {
-    $theme = $_GET['theme'] === 'dark' ? 'dark' : 'light';
-    setcookie('theme', $theme, time() + (86400 * 30), "/"); // 30 days
-}
-
-// Handle form submission for profile update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
-    $name = $_POST['name'] ?? $user['name'];
-    $email = $_POST['email'] ?? $user['email'];
-    $phone = $_POST['phone'] ?? $user['phone'];
-    $address = $_POST['address'] ?? $user['address'];
-    
-    try {
-        // Handle file upload if a new image is provided
-        $profile_image = $user['profile_image'];
-        if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = 'assets/profile_images/';
-            
-            // Create directory if it doesn't exist
-            if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Create new post
+    if (isset($_POST['create_post'])) {
+        $content = trim($_POST['content']);
+        $image_url = null;
+        
+        // Handle image upload
+        if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/BookHeaven2.0/assets/post_images/';
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
             }
             
-            // Generate unique filename
-            $fileExt = pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION);
-            $filename = uniqid('profile_') . '.' . $fileExt;
-            $targetPath = $uploadDir . $filename;
+            $file_ext = pathinfo($_FILES['post_image']['name'], PATHINFO_EXTENSION);
+            $filename = 'post_' . time() . '.' . $file_ext;
+            $target_path = $upload_dir . $filename;
             
-            // Validate file type
-            $allowedTypes = ['jpg', 'jpeg', 'png', 'webp'];
-            if (!in_array(strtolower($fileExt), $allowedTypes)) {
-                $_SESSION['error_message'] = "Only JPG, JPEG, PNG, and WEBP files are allowed.";
-                header("Location: profile.php");
-                exit();
-            }
-            
-            // Move uploaded file
-            if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $targetPath)) {
-                // Delete old image if it exists
-                if ($profile_image && file_exists($profile_image)) {
-                    unlink($profile_image);
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+            if (in_array($_FILES['post_image']['type'], $allowed_types)) {
+                if (move_uploaded_file($_FILES['post_image']['tmp_name'], $target_path)) {
+                    $image_url = $filename;
                 }
-                $profile_image = $targetPath;
-            } else {
-                throw new Exception("Failed to upload profile image.");
             }
         }
         
-        // Update user in database
-        $stmt = $pdo->prepare(
-            "UPDATE users SET 
-                name = ?, 
-                email = ?, 
-                phone = ?, 
-                address = ?, 
-                profile_image = ?
-             WHERE user_id = ?"
-        );
-        $stmt->execute([
-            $name,
-            $email,
-            $phone,
-            $address,
-            $profile_image,
-            $user_id
-        ]);
+        if (!empty($content)) {
+            $insert_sql = "INSERT INTO community_posts 
+                          (community_id, user_id, content, image_url) 
+                          VALUES (?, ?, ?, ?)";
+            $stmt = $conn->prepare($insert_sql);
+            $stmt->bind_param("iiss", $community_id, $user_id, $content, $image_url);
+            $stmt->execute();
+        }
         
-        $_SESSION['success_message'] = "Profile updated successfully!";
-        header("Location: profile.php");
+        header("Location: community_dashboard.php?id=$community_id");
         exit();
+    }
+
+    // Toggle like
+    if (isset($_POST['toggle_like'])) {
+        $post_id = intval($_POST['post_id']);
         
-    } catch (Exception $e) {
-        $_SESSION['error_message'] = "Error updating profile: " . $e->getMessage();
-        header("Location: profile.php");
-        exit();
+        // Check if already liked
+        $check_sql = "SELECT * FROM post_likes 
+                     WHERE post_id = ? AND user_id = ?";
+        $stmt = $conn->prepare($check_sql);
+        $stmt->bind_param("ii", $post_id, $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows > 0) {
+            // Unlike
+            $delete_sql = "DELETE FROM post_likes 
+                          WHERE post_id = ? AND user_id = ?";
+            $stmt = $conn->prepare($delete_sql);
+            $stmt->bind_param("ii", $post_id, $user_id);
+            $stmt->execute();
+        } else {
+            // Like
+            $insert_sql = "INSERT INTO post_likes 
+                          (post_id, user_id) 
+                          VALUES (?, ?)";
+            $stmt = $conn->prepare($insert_sql);
+            $stmt->bind_param("ii", $post_id, $user_id);
+            $stmt->execute();
+        }
+        
+        exit(); // AJAX response
+    }
+
+    // Add comment
+    if (isset($_POST['add_comment'])) {
+        $post_id = intval($_POST['post_id']);
+        $content = trim($_POST['content']);
+        
+        if (!empty($content)) {
+            // Insert the comment into the database
+            $insert_sql = "INSERT INTO post_comments 
+                          (post_id, user_id, content) 
+                          VALUES (?, ?, ?)";
+            $stmt = $conn->prepare($insert_sql);
+            $stmt->bind_param("iis", $post_id, $user_id, $content);
+            
+            if ($stmt->execute()) {
+                $comment_id = $conn->insert_id;
+                
+                // Get the newly added comment with user info
+                $comment_sql = "SELECT c.*, u.username, u.user_profile
+                               FROM post_comments c
+                               JOIN users u ON c.user_id = u.user_id
+                               WHERE c.comment_id = ?";
+                $stmt = $conn->prepare($comment_sql);
+                $stmt->bind_param("i", $comment_id);
+                $stmt->execute();
+                $comment = $stmt->get_result()->fetch_assoc();
+                
+                // Format the response
+                $response = [
+                    'success' => true,
+                    'comment' => [
+                        'user' => $comment['username'],
+                        'avatar' => !empty($comment['user_profile']) ? "/BookHeaven2.0/" . $comment['user_profile'] : "https://via.placeholder.com/50",
+                        'time' => time_elapsed_string($comment['created_at']),
+                        'content' => htmlspecialchars($comment['content'])
+                    ]
+                ];
+                
+                header('Content-Type: application/json');
+                echo json_encode($response);
+                exit();
+            } else {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Failed to insert comment']);
+                exit();
+            }
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Comment cannot be empty']);
+            exit();
+        }
     }
 }
 
-// Handle partner application
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_partner'])) {
-    try {
-        $stmt = $pdo->prepare("INSERT INTO partner_applications (user_id, application_date) VALUES (?, NOW())");
-        $stmt->execute([$user_id]);
-        
-        $_SESSION['success_message'] = "Partner application submitted successfully!";
-        header("Location: profile.php");
-        exit();
-        
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = "Error submitting partner application: " . $e->getMessage();
-        header("Location: profile.php");
+// Get community details
+if ($community_id > 0) {
+    $community_sql = "SELECT c.*, u.username as creator_name, u.user_profile as creator_avatar
+                     FROM communities c
+                     JOIN users u ON c.created_by = u.user_id
+                     WHERE c.community_id = ? AND c.status = 'active'";
+    $stmt = $conn->prepare($community_sql);
+    $stmt->bind_param("i", $community_id);
+    $stmt->execute();
+    $community = $stmt->get_result()->fetch_assoc();
+    
+    if (!$community) {
+        header("Location: community_dashboard.php");
         exit();
     }
+    
+    // Format community cover image URL
+    $community['cover_image_url'] = !empty($community['cover_image_url']) ? 
+        "/BookHeaven2.0/assets/community_images/" . basename($community['cover_image_url']) : 
+        "https://via.placeholder.com/300";
+    $community['creator_avatar'] = !empty($community['creator_avatar']) ? 
+        "/BookHeaven2.0/" . $community['creator_avatar'] : 
+        "https://via.placeholder.com/50";
 }
 
-$success_message = $_SESSION['success_message'] ?? '';
-$error_message = $_SESSION['error_message'] ?? '';
-unset($_SESSION['success_message'], $_SESSION['error_message']);
+// Get current user's profile
+$user_sql = "SELECT username, user_profile FROM users WHERE user_id = ?";
+$user_stmt = $conn->prepare($user_sql);
+$user_stmt->bind_param("i", $user_id);
+$user_stmt->execute();
+$user_result = $user_stmt->get_result();
+$current_user = $user_result->fetch_assoc();
+$current_user_avatar = !empty($current_user['user_profile']) ? 
+    "/BookHeaven2.0/" . $current_user['user_profile'] : 
+    "https://via.placeholder.com/50";
+$current_username = $current_user['username'];
+
+// Get community members (excluding current user)
+$members_sql = "SELECT u.user_id, u.username, u.user_profile, cm.role, cm.joined_at 
+               FROM community_members cm
+               JOIN users u ON cm.user_id = u.user_id
+               WHERE cm.community_id = ? AND cm.status = 'active' AND cm.user_id != ?
+               ORDER BY 
+                 CASE cm.role 
+                   WHEN 'admin' THEN 1 
+                   WHEN 'moderator' THEN 2 
+                   ELSE 3 
+                 END, cm.joined_at";
+$members_stmt = $conn->prepare($members_sql);
+$members_stmt->bind_param("ii", $community_id, $user_id);
+$members_stmt->execute();
+$members_result = $members_stmt->get_result();
+
+// Get community posts with comments and likes
+$posts_sql = "SELECT p.*, u.username, u.user_profile,
+              (SELECT COUNT(*) FROM post_likes WHERE post_id = p.post_id) as like_count,
+              (SELECT COUNT(*) FROM post_comments WHERE post_id = p.post_id AND status = 'active') as comment_count
+              FROM community_posts p
+              JOIN users u ON p.user_id = u.user_id
+              WHERE p.community_id = ? AND p.status = 'active'
+              ORDER BY p.created_at DESC";
+$posts_stmt = $conn->prepare($posts_sql);
+$posts_stmt->bind_param("i", $community_id);
+$posts_stmt->execute();
+$posts_result = $posts_stmt->get_result();
+
+// Prepare posts data with comments
+$posts = [];
+while ($post = $posts_result->fetch_assoc()) {
+    // Format user avatar URL
+    $post['avatar'] = !empty($post['user_profile']) ? 
+        "/BookHeaven2.0/" . $post['user_profile'] : 
+        "https://via.placeholder.com/50";
+    
+    // Format post image URL
+    $post['image_url'] = !empty($post['image_url']) ? 
+        "/BookHeaven2.0/assets/post_images/" . $post['image_url'] : 
+        null;
+    
+    // Get comments for this post
+    $comments_sql = "SELECT c.*, u.username, u.user_profile
+                    FROM post_comments c
+                    JOIN users u ON c.user_id = u.user_id
+                    WHERE c.post_id = ? AND c.status = 'active'
+                    ORDER BY c.created_at ASC";
+    $comments_stmt = $conn->prepare($comments_sql);
+    $comments_stmt->bind_param("i", $post['post_id']);
+    $comments_stmt->execute();
+    $comments_result = $comments_stmt->get_result();
+    
+    $comments = [];
+    while ($comment = $comments_result->fetch_assoc()) {
+        $comments[] = [
+            'user' => $comment['username'],
+            'avatar' => !empty($comment['user_profile']) ? "/BookHeaven2.0/" . $comment['user_profile'] : "https://via.placeholder.com/50",
+            'time' => time_elapsed_string($comment['created_at']),
+            'content' => htmlspecialchars($comment['content'])
+        ];
+    }
+    
+    // Check if current user liked this post
+    $like_check_sql = "SELECT * FROM post_likes 
+                      WHERE post_id = ? AND user_id = ?";
+    $like_check_stmt = $conn->prepare($like_check_sql);
+    $like_check_stmt->bind_param("ii", $post['post_id'], $user_id);
+    $like_check_stmt->execute();
+    $is_liked = $like_check_stmt->get_result()->num_rows > 0;
+    
+    $posts[] = [
+        'id' => $post['post_id'],
+        'community_id' => $post['community_id'],
+        'user' => $post['username'],
+        'avatar' => $post['avatar'],
+        'time' => time_elapsed_string($post['created_at']),
+        'content' => htmlspecialchars($post['content']),
+        'image_url' => $post['image_url'],
+        'likes' => $post['like_count'],
+        'is_liked' => $is_liked,
+        'comments' => $comments,
+        'comment_count' => $post['comment_count']
+    ];
+}
+
+// Function to format time
+function time_elapsed_string($datetime, $full = false) {
+    $now = new DateTime('now', new DateTimeZone('Asia/Dhaka'));
+    $ago = new DateTime($datetime);
+    $diff = $now->diff($ago);
+
+    $diff->w = floor($diff->d / 7);
+    $diff->d -= $diff->w * 7;
+
+    $string = array(
+        'y' => 'year',
+        'm' => 'month',
+        'w' => 'week',
+        'd' => 'day',
+        'h' => 'hour',
+        'i' => 'minute',
+        's' => 'second',
+    );
+    
+    foreach ($string as $k => &$v) {
+        if ($diff->$k) {
+            $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
+        } else {
+            unset($string[$k]);
+        }
+    }
+
+    if (!$full) $string = array_slice($string, 0, 1);
+    return $string ? implode(', ', $string) . ' ago' : 'just now';
+}
+// Rest of your existing code...
 ?>
 
 <!DOCTYPE html>
-<html lang="en" data-theme="<?= $theme ?>">
-
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Profile - BookHeaven</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root {
-      --primary-dark: #37474F;
-      --primary: #546E7A;
-      --primary-light: #90A4AE;
-      --primary-very-light: #B0BEC5;
-      --primary-extra-light: #CFD8DC;
-    }
-    
-    [data-theme="dark"] {
-      --primary-dark: #CFD8DC;
-      --primary: #B0BEC5;
-      --primary-light: #90A4AE;
-      --primary-very-light: #546E7A;
-      --primary-extra-light: #37474F;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: var(--primary-extra-light);
-      color: var(--primary-dark);
-      line-height: 1.6;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Header Styles */
-    header {
-      background-color: var(--primary);
-      color: white;
-      padding: 1rem;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .logo {
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
-
-    .logo a {
-      color: white;
-      text-decoration: none;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .theme-toggle {
-      background: none;
-      border: none;
-      color: white;
-      cursor: pointer;
-      font-size: 1.2rem;
-    }
-
-    .user-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid white;
-    }
-
-    /* Main Layout */
-    .profile-container {
-      display: flex;
-      flex: 1;
-    }
-
-    /* Sidebar Navigation */
-    aside {
-      width: 250px;
-      background-color: var(--primary-very-light);
-      padding: 1.5rem 0;
-    }
-
-    .profile-nav ul {
-      list-style: none;
-    }
-
-    .profile-nav li a {
-      display: flex;
-      align-items: center;
-      padding: 0.8rem 1.5rem;
-      color: var(--primary-dark);
-      text-decoration: none;
-      transition: all 0.3s;
-    }
-
-    .profile-nav li a:hover,
-    .profile-nav li a.active {
-      background-color: var(--primary-light);
-      color: white;
-    }
-
-    .profile-nav li a i {
-      margin-right: 10px;
-      width: 20px;
-      text-align: center;
-    }
-
-    /* Main Content */
-    main {
-      flex: 1;
-      padding: 2rem;
-      background-color: white;
-    }
-
-    [data-theme="dark"] main {
-      background-color: var(--primary-extra-light);
-    }
-
-    .profile-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--primary-very-light);
-    }
-
-    .profile-title {
-      font-size: 1.8rem;
-      color: var(--primary);
-    }
-
-    .edit-btn {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    .edit-btn:hover {
-      background-color: var(--primary-dark);
-    }
-
-    /* Profile Grid */
-    .profile-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 2rem;
-      margin-bottom: 2rem;
-    }
-
-    .profile-card {
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      padding: 1.5rem;
-    }
-
-    [data-theme="dark"] .profile-card {
-      background-color: var(--primary-very-light);
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--primary-very-light);
-    }
-
-    .card-title {
-      font-size: 1.2rem;
-      color: var(--primary);
-    }
-
-    .profile-info {
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 1rem;
-    }
-
-    .info-label {
-      font-weight: bold;
-      color: var(--primary);
-    }
-
-    .profile-image-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .profile-image {
-      width: 150px;
-      height: 150px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 3px solid var(--primary-light);
-    }
-
-    .partner-status {
-      display: inline-block;
-      padding: 0.3rem 0.8rem;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      font-weight: bold;
-    }
-
-    .partner-true {
-      background-color: #4CAF50;
-      color: white;
-    }
-
-    .partner-false {
-      background-color: #F44336;
-      color: white;
-    }
-
-    .become-partner-btn {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      margin-top: 1rem;
-    }
-
-    .become-partner-btn:hover {
-      background-color: var(--primary-dark);
-    }
-
-    /* Profile Form */
-    .profile-form {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-    }
-
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: var(--primary);
-    }
-
-    .form-group input,
-    .form-group textarea {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid var(--primary-very-light);
-      border-radius: 4px;
-      font-size: 1rem;
-      background-color: white;
-      color: var(--primary-dark);
-    }
-
-    [data-theme="dark"] .form-group input,
-    [data-theme="dark"] .form-group textarea {
-      background-color: var(--primary-very-light);
-      border-color: var(--primary-light);
-      color: var(--primary-dark);
-    }
-
-    .form-group textarea {
-      min-height: 100px;
-      resize: vertical;
-    }
-
-    .form-actions {
-      grid-column: span 2;
-      display: flex;
-      justify-content: flex-end;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    .btn {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.3s;
-    }
-
-    .btn-primary {
-      background-color: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background-color: var(--primary-dark);
-    }
-
-    .btn-secondary {
-      background-color: var(--primary-very-light);
-      color: var(--primary-dark);
-    }
-
-    .btn-secondary:hover {
-      background-color: var(--primary-light);
-      color: white;
-    }
-
-    /* Footer */
-    footer {
-      background-color: var(--primary);
-      color: white;
-      padding: 1.5rem;
-      text-align: center;
-    }
-
-    .footer-links {
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .footer-links a {
-      color: white;
-      text-decoration: none;
-    }
-
-    .footer-links a:hover {
-      text-decoration: underline;
-    }
-
-    .copyright {
-      font-size: 0.9rem;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 992px) {
-      .profile-container {
-        flex-direction: column;
-      }
-      
-      aside {
-        width: 100%;
-      }
-      
-      .profile-nav ul {
-        display: flex;
-        overflow-x: auto;
-        padding: 0 1rem;
-      }
-      
-      .profile-nav li {
-        flex-shrink: 0;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .profile-form {
-        grid-template-columns: 1fr;
-      }
-      
-      .form-actions {
-        grid-column: span 1;
-      }
-      
-      .profile-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 576px) {
-      header {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-      }
-      
-      .profile-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-      }
-      
-      .form-actions {
-        flex-direction: column;
-      }
-      
-      .btn {
-        width: 100%;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo isset($community) ? htmlspecialchars($community['name']) : 'Community'; ?> | Book Heaven</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-
 <body>
-  <!-- Header -->
-  <header>
-    <div class="logo">
-      <a href="index.php">BookHeaven</a>
-    </div>
-    <div class="header-actions">
-      <button class="theme-toggle" id="themeToggle">
-        <i class="fas fa-moon"></i>
-      </button>
-      <img src="<?= $user['profile_image'] ? htmlspecialchars($user['profile_image']) : 'https://via.placeholder.com/150?text=No+Image' ?>" 
-           alt="Profile Image" class="user-avatar">
-    </div>
-  </header>
-
-  <div class="profile-container">
-    <!-- Sidebar Navigation -->
-    <aside>
-      <nav class="profile-nav">
-        <ul>
-          <li><a href="profile.php" class="active"><i class="fas fa-user"></i> Profile</a></li>
-          <li><a href="wishlist.php"><i class="fas fa-heart"></i> My Wishlist</a></li>
-          <li><a href="orders.php"><i class="fas fa-shopping-bag"></i> My Orders</a></li>
-          <li><a href="subscription.php"><i class="fas fa-star"></i> My Subscription</a></li>
-          <li><a href="settings.php"><i class="fas fa-cog"></i> Settings</a></li>
-          <li><a href="history.php"><i class="fas fa-history"></i> History</a></li>
-          <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-      </nav>
-    </aside>
-
-    <!-- Main Content -->
+    <!-- Rest of your HTML remains the same -->
+    <?php include_once("../../header.php"); ?>
+    
     <main>
-      <div class="profile-header">
-        <h1 class="profile-title">My Profile</h1>
-        <button class="edit-btn" id="editProfileBtn">
-          <i class="fas fa-edit"></i> Edit Profile
-        </button>
-      </div>
-
-      <?php if ($error_message): ?>
-        <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
-      <?php endif; ?>
-      <?php if ($success_message): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
-      <?php endif; ?>
-
-      <div class="profile-grid">
-        <!-- Profile Summary Card -->
-        <div class="profile-card">
-          <div class="card-header">
-            <h2 class="card-title">Profile Summary</h2>
-          </div>
-          <div class="profile-image-container">
-            <img src="<?= $user['profile_image'] ? htmlspecialchars($user['profile_image']) : 'https://via.placeholder.com/150?text=No+Image' ?>" 
-                 alt="Profile Image" class="profile-image">
-            <span class="partner-status <?= $is_partner ? 'partner-true' : 'partner-false' ?>">
-              <?= $is_partner ? 'Partner' : 'Regular Member' ?>
-            </span>
-            <?php if (!$is_partner): ?>
-              <form method="POST">
-                <button type="submit" name="apply_partner" class="become-partner-btn">
-                  Become a Partner
-                </button>
-              </form>
+        <aside>
+            <div class="community-header">
+                <?php if (isset($community)): ?>
+                    <div class="community-info">
+                        <h1><?php echo htmlspecialchars($community['name']); ?></h1>
+                        <p><?php echo htmlspecialchars($community['description']); ?></p>
+                        <?php if ($community['cover_image_url']): ?>
+                            <img src="<?php echo $community['cover_image_url']; ?>" alt="Community Cover" style="width:100%; border-radius:8px; margin-top:10px;">
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <h3>Community Members</h3>
+            <div class="member-list">
+                <?php if ($members_result->num_rows > 0): ?>
+                    <?php while ($member = $members_result->fetch_assoc()): ?>
+                        <div class="member-item">
+                            <div class="member-info">
+                                <span class="member-status <?php echo $member['role'] === 'admin' ? '' : 'inactive'; ?>"></span>
+                                <img src="<?php echo !empty($member['user_profile']) ? '/BookHeaven2.0/' . htmlspecialchars($member['user_profile']) : 'https://via.placeholder.com/40'; ?>" 
+                                     alt="<?php echo htmlspecialchars($member['username']); ?>" 
+                                     class="member-avatar">
+                                <div>
+                                    <div><?php echo htmlspecialchars($member['username']); ?></div>
+                                    <small><?php echo ucfirst($member['role']); ?></small>
+                                </div>
+                            </div>
+                            <button class="message-btn" onclick="window.location.href='messages.php?user_id=<?php echo $member['user_id']; ?>'">
+                                <i class="fas fa-envelope"></i> Message
+                            </button>
+                        </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <p>No other members found</p>
+                <?php endif; ?>
+            </div>
+        </aside>
+        
+        <div class="dashboard-content">
+            <?php if (isset($community)): ?>
+                <div class="create-post">
+                    <form class="post-form" method="post" enctype="multipart/form-data">
+                        <textarea name="content" class="post-input" placeholder="What's on your mind?" required></textarea>
+                        <div class="post-actions">
+                            <div>
+                                <input type="file" id="post-image" name="post_image" class="file-input" accept="image/*">
+                                <label for="post-image" class="file-label">
+                                    <i class="fas fa-image"></i> Add Image
+                                </label>
+                            </div>
+                            <button type="submit" name="create_post" class="post-submit">Post</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="posts-container">
+                    <?php if (!empty($posts)): ?>
+                        <?php foreach ($posts as $post): ?>
+                            <div class="post-card" id="post-<?php echo $post['id']; ?>">
+                                <div class="post-header">
+                                    <img src="<?php echo $post['avatar']; ?>" alt="<?php echo $post['user']; ?>" class="user-avatar">
+                                    <div class="user-info">
+                                        <div class="user-name"><?php echo $post['user']; ?></div>
+                                        <div class="post-time"><?php echo $post['time']; ?></div>
+                                    </div>
+                                </div>
+                                <div class="post-content">
+                                    <?php echo $post['content']; ?>
+                                </div>
+                                <?php if ($post['image_url']): ?>
+                                    <img src="<?php echo $post['image_url']; ?>" alt="Post image" class="post-image">
+                                <?php endif; ?>
+                                <div class="post-footer">
+                                    <button class="action-btn like-btn <?php echo $post['is_liked'] ? 'liked' : ''; ?>" 
+                                            onclick="toggleLike(<?php echo $post['id']; ?>, this)">
+                                        <i class="fas fa-thumbs-up"></i>
+                                        <span><?php echo $post['likes']; ?> Likes</span>
+                                    </button>
+                                    <button class="action-btn comment-btn" onclick="toggleComments(<?php echo $post['id']; ?>)">
+                                        <i class="fas fa-comment"></i>
+                                        <span><?php echo $post['comment_count']; ?> Comments</span>
+                                    </button>
+                                    <button class="action-btn share-btn">
+                                        <i class="fas fa-share-alt"></i>
+                                        <span>Share</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="comment-section" id="comments-<?php echo $post['id']; ?>">
+                                    <form class="comment-form" method="post" onsubmit="return addComment(event, <?php echo $post['id']; ?>)">
+                                        <input type="hidden" name="post_id" value="<?php echo $post['id']; ?>">
+                                        <input type="text" name="content" class="comment-input" placeholder="Write a comment..." required>
+                                        <button type="submit" name="add_comment" class="comment-submit">Post</button>
+                                    </form>
+                                    
+                                    <div class="comments-list" id="comments-list-<?php echo $post['id']; ?>">
+                                        <?php foreach ($post['comments'] as $comment): ?>
+                                            <div class="comment-item">
+                                                <img src="<?php echo $comment['avatar']; ?>" alt="<?php echo $comment['user']; ?>" class="comment-avatar">
+                                                <div class="comment-content">
+                                                    <div class="comment-user"><?php echo $comment['user']; ?></div>
+                                                    <div class="comment-text"><?php echo $comment['content']; ?></div>
+                                                    <div class="comment-time"><?php echo $comment['time']; ?></div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="post-card">
+                            <div class="post-content">
+                                <p>No posts yet. Be the first to post in this community!</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="post-card">
+                    <div class="post-content">
+                        <p>Community not found or you don't have access to view it.</p>
+                    </div>
+                </div>
             <?php endif; ?>
-          </div>
         </div>
-
-        <!-- Account Details Card -->
-        <div class="profile-card">
-          <div class="card-header">
-            <h2 class="card-title">Account Details</h2>
-          </div>
-          <div class="profile-info">
-            <span class="info-label">Join Date:</span>
-            <span><?= date('F j, Y', strtotime($user['created_at'])) ?></span>
-            
-            <span class="info-label">Email:</span>
-            <span><?= htmlspecialchars($user['email']) ?></span>
-            
-            <span class="info-label">Status:</span>
-            <span><?= $user['is_active'] ? 'Active' : 'Inactive' ?></span>
-            
-            <span class="info-label">Role:</span>
-            <span><?= $is_partner ? 'Partner' : 'Customer' ?></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Profile Details Form -->
-      <div class="profile-card" id="profileFormContainer" style="display: none;">
-        <div class="card-header">
-          <h2 class="card-title">Edit Profile</h2>
-        </div>
-        <form method="POST" enctype="multipart/form-data" class="profile-form">
-          <div class="form-group">
-            <label for="name">Full Name</label>
-            <input type="text" id="name" name="name" value="<?= htmlspecialchars($user['name']) ?>" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="phone">Phone Number</label>
-            <input type="text" id="phone" name="phone" value="<?= htmlspecialchars($user['phone']) ?>">
-          </div>
-          
-          <div class="form-group">
-            <label for="address">Address</label>
-            <textarea id="address" name="address"><?= htmlspecialchars($user['address']) ?></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="profile_image">Profile Image</label>
-            <input type="file" id="profile_image" name="profile_image" accept="image/*">
-            <small>Allowed formats: JPG, JPEG, PNG, WEBP</small>
-          </div>
-          
-          <div class="form-actions">
-            <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
-            <button type="submit" name="update_profile" class="btn btn-primary">Save Changes</button>
-          </div>
-        </form>
-      </div>
     </main>
-  </div>
-
-  <!-- Footer -->
-  <footer>
-    <div class="footer-links">
-      <a href="about.php">About Us</a>
-      <a href="contact.php">Contact</a>
-      <a href="privacy.php">Privacy Policy</a>
-      <a href="terms.php">Terms of Service</a>
-    </div>
-    <div class="copyright">
-      &copy; <?= date('Y') ?> BookHeaven. All rights reserved.
-    </div>
-  </footer>
-
-  <script>
-    // Theme Toggle Functionality
-    const themeToggle = document.getElementById('themeToggle');
-    const icon = themeToggle.querySelector('i');
-    const currentTheme = document.documentElement.getAttribute('data-theme');
     
-    // Set initial icon
-    if (currentTheme === 'dark') {
-      icon.classList.replace('fa-moon', 'fa-sun');
-    }
-    
-    // Toggle theme on button click
-    themeToggle.addEventListener('click', () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      if (newTheme === 'dark') {
-        icon.classList.replace('fa-moon', 'fa-sun');
-      } else {
-        icon.classList.replace('fa-sun', 'fa-moon');
-      }
-      
-      // Update theme preference via URL parameter
-      window.location.href = `profile.php?theme=${newTheme}`;
-    });
-    
-    // Profile Edit Toggle
-    const editProfileBtn = document.getElementById('editProfileBtn');
-    const cancelEditBtn = document.getElementById('cancelEditBtn');
-    const profileFormContainer = document.getElementById('profileFormContainer');
-    
-    editProfileBtn.addEventListener('click', () => {
-      profileFormContainer.style.display = 'block';
-      window.scrollTo({
-        top: profileFormContainer.offsetTop - 20,
-        behavior: 'smooth'
-      });
-    });
-    
-    cancelEditBtn.addEventListener('click', () => {
-      profileFormContainer.style.display = 'none';
-    });
-  </script>
+    <?php include_once("../../footer.php"); ?>
+    <script>
+        // Toggle like button
+        function toggleLike(postId, button) {
+            const formData = new FormData();
+            formData.append('post_id', postId);
+            formData.append('toggle_like', '1');
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    const likeCount = button.querySelector('span');
+                    const currentCount = parseInt(likeCount.textContent);
+                    
+                    if (button.classList.contains('liked')) {
+                        // Unlike
+                        button.classList.remove('liked');
+                        likeCount.textContent = (currentCount - 1) + ' Likes';
+                    } else {
+                        // Like
+                        button.classList.add('liked');
+                        likeCount.textContent = (currentCount + 1) + ' Likes';
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+        
+        // Toggle comments section
+        function toggleComments(postId) {
+            const commentSection = document.getElementById('comments-' + postId);
+            commentSection.style.display = commentSection.style.display === 'block' ? 'none' : 'block';
+            
+            // Scroll to comments if opening
+            if (commentSection.style.display === 'block') {
+                commentSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+        
+        // Add new comment
+        function addComment(event, postId) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const commentInput = form.querySelector('.comment-input');
+            const commentsList = document.getElementById('comments-list-' + postId);
+            const commentBtn = document.querySelector(`#post-${postId} .comment-btn span`);
+            
+            // Show loading state
+            const submitBtn = form.querySelector('.comment-submit');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = 'Posting...';
+            submitBtn.disabled = true;
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Create a new comment element with the server response
+                    const newComment = document.createElement('div');
+                    newComment.className = 'comment-item';
+                    newComment.innerHTML = `
+                        <img src="${data.comment.avatar}" alt="${data.comment.user}" class="comment-avatar">
+                        <div class="comment-content">
+                            <div class="comment-user">${data.comment.user}</div>
+                            <div class="comment-text">${data.comment.content}</div>
+                            <div class="comment-time">${data.comment.time}</div>
+                        </div>
+                    `;
+                    
+                    // Add the new comment to the top of the comments list
+                    if (commentsList.firstChild) {
+                        commentsList.insertBefore(newComment, commentsList.firstChild);
+                    } else {
+                        commentsList.appendChild(newComment);
+                    }
+                    
+                    commentInput.value = '';
+                    
+                    // Update comment count
+                    const currentCount = parseInt(commentBtn.textContent.match(/\d+/)[0] || 0);
+                    commentBtn.textContent = `${currentCount + 1} Comments`;
+                    
+                    // Ensure comment section is visible
+                    document.getElementById('comments-' + postId).style.display = 'block';
+                } else {
+                    alert(data.error || 'Failed to post comment');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error posting comment');
+            })
+            .finally(() => {
+                submitBtn.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            });
+            
+            return false;
+        }
+        
+        // Initialize comment sections as hidden
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.comment-section').forEach(section => {
+                section.style.display = 'none';
+            });
+        });
+    </script>
 </body>
 </html>
