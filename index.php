@@ -4,7 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
-
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 if (isset($_POST['add_to_cart'])) {
     $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
@@ -20,10 +19,8 @@ if (isset($_POST['add_to_cart'])) {
     $check_result = mysqli_query($conn, $check_query);
 
     if (mysqli_num_rows($check_result) > 0) {
-
         $_SESSION['info_message'] = 'This book is already in your cart';
     } else {
-
         $insert_query = "INSERT INTO cart (user_id, book_id, quantity) VALUES ($user_id, $book_id, 1)";
         if (mysqli_query($conn, $insert_query)) {
             $_SESSION['success_message'] = 'Book added to cart successfully!';
@@ -46,8 +43,7 @@ if (isset($_POST['add_to_cart'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- <link rel="stylesheet" href="/BookHeaven2.0/css/home.css"> -->
-     <style>
+    <style>
 :root {
   --primary-color: #57abd2;
   --secondary-color: #f8f5fc;
@@ -143,7 +139,6 @@ body {
 }
 
 /* Left Side Sections */
-.filter-section,
 .writer-section,
 .genre-section {
   background: var(--card-bg);
@@ -161,10 +156,6 @@ body {
   background: var(--writer-section-bg);
 }
 
-.filter-section {
-  background: var(--filter-section-bg);
-}
-
 .genre-section {
   background: var(--genre-section-bg);
 }
@@ -176,33 +167,6 @@ body {
   padding-bottom: 10px;
   border-bottom: 1px solid var(--light-purple);
   transition: color 0.3s, border-color 0.3s;
-}
-
-.filter-options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.filter-btn {
-  background-color: var(--light-purple);
-  color: var(--primary-color);
-  border: none;
-  padding: 8px 15px;
-  border-radius: 5px;
-  text-align: left;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-
-.filter-btn:hover,
-.filter-btn.active {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.filter-btn.active {
-  font-weight: bold;
 }
 
 .writer-list,
@@ -362,6 +326,38 @@ body {
   transition: color 0.3s, border-color 0.3s;
 }
 
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.filter-tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  margin-right: 5px;
+  background-color: var(--light-purple);
+  color: var(--primary-color);
+  transition: all 0.3s;
+}
+
+.filter-tab:hover {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.filter-tab.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--border-color);
+  border-bottom: 1px solid var(--card-bg);
+  margin-bottom: -1px;
+}
+
 .book-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -491,6 +487,14 @@ body {
   .carousel-wrapper {
     margin-left: 15px;
     margin-right: 15px;
+  }
+  
+  .filter-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .filter-tab {
+    margin-bottom: 5px;
   }
 }
 
@@ -642,7 +646,6 @@ footer {
     <div class="content-container">
         <!-- Left Side (30% width) -->
         <div class="left-content">
-
             <!-- Writers Section -->
             <div class="writer-section">
                 <h3 class="section-title">Popular Writers</h3>
@@ -662,17 +665,7 @@ footer {
                     <?php endwhile; ?>
                 </ul>
             </div>
-            <!-- Filter Section -->
-            <div class="filter-section">
-                <h3 class="section-title">Filter Options</h3>
-                <div class="filter-options">
-                    <button class="filter-btn active" data-filter="all">All Books</button>
-                    <button class="filter-btn" data-filter="popular">Popular</button>
-                    <button class="filter-btn" data-filter="top-rated">Top Rated</button>
-                    <button class="filter-btn" data-filter="recent">Recently Added</button>
-                    <button class="filter-btn" data-filter="sale">On Sale</button>
-                </div>
-            </div>
+            
             <!-- Genre Section -->
             <div class="genre-section">
                 <h3 class="section-title">Browse Genres</h3>
@@ -715,9 +708,15 @@ footer {
                 </div>
             </div>
 
-            <!-- Books Section with Filter Content -->
+            <!-- Books Section with Filter Tabs -->
             <div class="books-section">
-                <h1 class="section-heading" style="text-decoration: underline;">All Books</h1>
+                <div class="filter-tabs">
+                    <div class="filter-tab active" data-filter="all">All Books</div>
+                    <div class="filter-tab" data-filter="popular">Popular</div>
+                    <div class="filter-tab" data-filter="top-rated">Top Rated</div>
+                    <div class="filter-tab" data-filter="recent">Recently Added</div>
+                    <div class="filter-tab" data-filter="sale">On Sale</div>
+                </div>
 
                 <!-- All Books (Default Active) -->
                 <div class="filter-content active" id="all-books">
@@ -944,41 +943,31 @@ footer {
     <?php include 'footer.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Filter Functionality -->
-    <!-- Keep only the filter functionality -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            const sectionHeading = document.querySelector('.section-heading');
-            const filterTitles = {
-                'all': 'All Books',
-                'popular': 'Popular Books',
-                'top-rated': 'Top Rated Books',
-                'recent': 'Recently Added Books',
-                'sale': 'On Sale Books'
-            };
-
-            filterButtons.forEach(button => {
-                button.addEventListener('click', function () {
-                    // Remove active class from all buttons
-                    filterButtons.forEach(btn => btn.classList.remove('active'));
-
-                    // Add active class to clicked button
+            // Tab functionality
+            const tabs = document.querySelectorAll('.filter-tab');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
                     this.classList.add('active');
-
+                    
                     // Hide all filter content
                     document.querySelectorAll('.filter-content').forEach(content => {
                         content.classList.remove('active');
                     });
-
-                    // Show the selected filter content and update heading
+                    
+                    // Show the selected filter content
                     const filterType = this.getAttribute('data-filter');
                     document.getElementById(`${filterType}-books`).classList.add('active');
-                    sectionHeading.textContent = filterTitles[filterType];
                 });
             });
-        });
-        document.addEventListener('DOMContentLoaded', function () {
+
+            // Alert messages
             <?php if (isset($_SESSION['success_message'])): ?>
                 alert('<?php echo $_SESSION['success_message']; ?>');
                 <?php unset($_SESSION['success_message']); ?>
@@ -993,24 +982,6 @@ footer {
                 alert('<?php echo $_SESSION['info_message']; ?>');
                 <?php unset($_SESSION['info_message']); ?>
             <?php endif; ?>
-        });
-        // new added code
-        document.addEventListener('DOMContentLoaded', function() {
-  const themeToggle = document.getElementById('themeToggle');
-  const icon = themeToggle.querySelector('i');
-  
-  // Check for saved theme preference or use preferred color scheme
-  const currentTheme = localStorage.getItem('theme') || 
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  
-  // Apply the current theme
-  if (currentTheme === 'dark') {
-    document.body.classList.add('dark-mode');
-    icon.classList.replace('fa-moon', 'fa-sun');
-  }
-
-});
     </script>
 </body>
-
 </html>

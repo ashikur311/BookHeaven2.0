@@ -62,16 +62,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             }
         }
         
-        $fileExt = pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION);
+        $fileExt = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
         
         // Validate file extension
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-        if (!in_array(strtolower($fileExt), $allowedExtensions)) {
+        if (!in_array($fileExt, $allowedExtensions)) {
             $_SESSION['error_message'] = "Invalid image file type. Only JPG, PNG, and GIF are allowed.";
             header("Location: user_setting.php");
             exit();
         }
         
+        // Generate unique filename
         $fileName = 'user_' . $user_id . '_' . time() . '.' . $fileExt;
         $uploadPath = $uploadDir . $fileName;
         
@@ -425,6 +426,98 @@ while ($row = $result->fetch_assoc()) {
             width: 400px;
             max-width: 90%;
         }
+        .payment-method {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .payment-method-icon {
+            font-size: 40px;
+            margin-right: 15px;
+            color: #555;
+        }
+        .payment-method-details {
+            flex-grow: 1;
+        }
+        .payment-method-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .verification-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .verification-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            flex: 1;
+            margin-bottom: 15px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-check {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .form-check-input {
+            margin-right: 10px;
+        }
+        .section-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .settings-tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active {
+            border-bottom: 3px solid #4CAF50;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -479,22 +572,23 @@ while ($row = $result->fetch_assoc()) {
                         <h2>Profile Settings</h2>
                     </div>
                     
-                    <div class="profile-image-upload">
-                        <img src="/BookHeaven2.0/<?php echo htmlspecialchars($user['user_profile'] ?? 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'); ?>"
-                            alt="<?php echo htmlspecialchars($user['username']); ?>" class="current-profile-image" id="profileImagePreview">
-                        <div class="image-upload-controls">
-                            <div class="file-input-wrapper">
-                                <button class="btn btn-primary">Upload New Photo</button>
-                                <input type="file" id="profileImage" name="profile_image" accept="image/*" onchange="previewImage(this)">
-                            </div>
-                            <form method="POST" action="" style="display:inline;">
-                                <button type="submit" name="remove_profile_image" class="btn btn-outline">Remove Photo</button>
-                            </form>
-                        </div>
-                    </div>
-                    
                     <form method="POST" action="" enctype="multipart/form-data">
                         <input type="hidden" name="update_profile" value="1">
+                        
+                        <div class="profile-image-upload">
+                            <img src="/BookHeaven2.0/<?php echo htmlspecialchars($user['user_profile'] ?? 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'); ?>"
+                                alt="<?php echo htmlspecialchars($user['username']); ?>" class="current-profile-image" id="profileImagePreview">
+                            <div class="image-upload-controls">
+                                <div class="file-input-wrapper">
+                                    <button type="button" class="btn btn-primary">Upload New Photo</button>
+                                    <input type="file" id="profileImage" name="profile_image" accept="image/*" onchange="previewImage(this)">
+                                </div>
+                                <?php if (!empty($user['user_profile']) && strpos($user['user_profile'], 'https://') === false): ?>
+                                    <button type="submit" name="remove_profile_image" class="btn btn-outline">Remove Photo</button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="username">Username</label>
@@ -765,6 +859,12 @@ while ($row = $result->fetch_assoc()) {
                 }
                 
                 reader.readAsDataURL(input.files[0]);
+                
+                // Ensure the form has the correct enctype
+                const form = input.closest('form');
+                if (form) {
+                    form.setAttribute('enctype', 'multipart/form-data');
+                }
             }
         }
 
@@ -786,8 +886,23 @@ while ($row = $result->fetch_assoc()) {
             const form = document.getElementById('editPaymentForm');
             const formData = new FormData(form);
            
-            alert('Payment method updated successfully!');
-            closeModal('editPaymentModal');
+            fetch('update_payment.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Payment method updated successfully!');
+                    location.reload();
+                } else {
+                    alert('Error updating payment method: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating payment method');
+            });
         }
 
         function confirmDeletePayment(paymentId) {
@@ -829,6 +944,11 @@ while ($row = $result->fetch_assoc()) {
                 value = value.substring(0, 2) + '/' + value.substring(2, 4);
             }
             e.target.value = value;
+        });
+
+        // Initialize the first tab as active
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.tab-btn.active').click();
         });
     </script>
 </body>

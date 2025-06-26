@@ -168,6 +168,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
     }
+    
+    // Delete post
+    if (isset($_POST['delete_post'])) {
+        $post_id = intval($_POST['post_id']);
+        
+        // Verify user owns the post or is admin/moderator
+        $check_sql = "SELECT p.user_id, cm.role 
+                     FROM community_posts p
+                     LEFT JOIN community_members cm ON cm.community_id = p.community_id AND cm.user_id = ?
+                     WHERE p.post_id = ?";
+        $stmt = $conn->prepare($check_sql);
+        $stmt->bind_param("ii", $user_id, $post_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        
+        if ($result && ($result['user_id'] == $user_id || $result['role'] == 'admin' || $result['role'] == 'moderator')) {
+            // Soft delete the post
+            $delete_sql = "UPDATE community_posts SET status = 'deleted' WHERE post_id = ?";
+            $stmt = $conn->prepare($delete_sql);
+            $stmt->bind_param("i", $post_id);
+            $stmt->execute();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true]);
+            exit();
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Not authorized']);
+            exit();
+        }
+    }
+    
+    // Update post
+    if (isset($_POST['update_post'])) {
+        $post_id = intval($_POST['post_id']);
+        $content = trim($_POST['content']);
+        
+        // Verify user owns the post
+        $check_sql = "SELECT user_id FROM community_posts WHERE post_id = ?";
+        $stmt = $conn->prepare($check_sql);
+        $stmt->bind_param("i", $post_id);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        
+        if ($result && $result['user_id'] == $user_id) {
+            $update_sql = "UPDATE community_posts SET content = ? WHERE post_id = ?";
+            $stmt = $conn->prepare($update_sql);
+            $stmt->bind_param("si", $content, $post_id);
+            $stmt->execute();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'content' => htmlspecialchars($content)]);
+            exit();
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Not authorized']);
+            exit();
+        }
+    }
 }
 
 // Get community details
@@ -206,6 +265,24 @@ $current_user_avatar = !empty($current_user['user_profile']) ?
     "/BookHeaven2.0/" . $current_user['user_profile'] :
     "https://via.placeholder.com/50";
 $current_username = $current_user['username'];
+
+// Get unread message count for current user
+$unread_msg_sql = "SELECT COUNT(*) as unread_count FROM community_messages 
+                  WHERE receiver_id = ? AND status != 'read'";
+$unread_msg_stmt = $conn->prepare($unread_msg_sql);
+$unread_msg_stmt->bind_param("i", $user_id);
+$unread_msg_stmt->execute();
+$unread_msg_result = $unread_msg_stmt->get_result()->fetch_assoc();
+$unread_msg_count = $unread_msg_result['unread_count'] ?? 0;
+
+// Get current user's role in this community
+$user_role_sql = "SELECT role FROM community_members 
+                 WHERE community_id = ? AND user_id = ? AND status = 'active'";
+$user_role_stmt = $conn->prepare($user_role_sql);
+$user_role_stmt->bind_param("ii", $community_id, $user_id);
+$user_role_stmt->execute();
+$user_role_result = $user_role_stmt->get_result()->fetch_assoc();
+$current_user_role = $user_role_result['role'] ?? 'member';
 
 // Get community members (excluding current user)
 $members_sql = "SELECT u.user_id, u.username, u.user_profile, cm.role, cm.joined_at 
@@ -277,9 +354,13 @@ while ($post = $posts_result->fetch_assoc()) {
     $like_check_stmt->bind_param("ii", $post['post_id'], $user_id);
     $like_check_stmt->execute();
     $is_liked = $like_check_stmt->get_result()->num_rows > 0;
+    
+    // Check if current user owns this post or is admin/moderator
+    $can_edit = ($post['user_id'] == $user_id || $current_user_role == 'admin' || $current_user_role == 'moderator');
 
     $posts[] = [
         'id' => $post['post_id'],
+        'user_id' => $post['user_id'],
         'community_id' => $post['community_id'],
         'user' => $post['username'],
         'avatar' => $post['avatar'],
@@ -288,6 +369,7 @@ while ($post = $posts_result->fetch_assoc()) {
         'image_url' => $post['image_url'],
         'likes' => $post['like_count'],
         'is_liked' => $is_liked,
+        'can_edit' => $can_edit,
         'comments' => $comments,
         'comment_count' => $post['comment_count']
     ];
@@ -335,541 +417,7 @@ function time_elapsed_string($datetime, $full = false)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($community) ? htmlspecialchars($community['name']) : 'Community'; ?> | Book Heaven</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #57abd2;
-            --primary-dark: #3d8eb4;
-            --secondary-color: #f8f5fc;
-            --accent-color: rgb(223, 219, 227);
-            --text-color: #333;
-            --text-light: #666;
-            --light-purple: #e6d9f2;
-            --dark-text: #212529;
-            --light-text: #f8f9fa;
-            --card-bg: #ffffff;
-            --aside-bg: #f0f2f5;
-            --nav-hover: #e0e0e0;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --danger-color: #dc3545;
-            --border-color: #e0e0e0;
-            --hover-bg: #f5f5f5;
-            --even-row-bg: #f9f9f9;
-            --header-bg: #f0f0f0;
-            --header-text: #333;
-            --card-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
-        }
-
-        .dark-mode {
-            --primary-color: #57abd2;
-            --primary-dark: #4a9bc1;
-            --secondary-color: #2d3748;
-            --accent-color: #4a5568;
-            --text-color: #f8f9fa;
-            --text-light: #a0aec0;
-            --light-purple: #4a5568;
-            --dark-text: #f8f9fa;
-            --light-text: #212529;
-            --card-bg: #1a202c;
-            --aside-bg: #1a202c;
-            --nav-hover: #4a5568;
-            --border-color: #4a5568;
-            --hover-bg: #2d3748;
-            --even-row-bg: #2d3748;
-            --header-bg: #1a202c;
-            --header-text: #f8f9fa;
-            --card-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--secondary-color);
-            color: var(--text-color);
-            transition: var(--transition);
-        }
-
-        main {
-            display: flex;
-            min-height: calc(100vh - 120px);
-            padding: 20px;
-            gap: 20px;
-        }
-
-        aside {
-            flex: 1;
-            max-width: 350px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .community-info-card {
-            background-color: var(--card-bg);
-            border-radius: 10px;
-            padding: 0;
-            box-shadow: var(--card-shadow);
-            overflow: hidden;
-        }
-
-        .community-cover {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-        }
-
-        .community-details {
-            padding: 20px;
-        }
-
-        .community-details h2 {
-            margin-bottom: 5px;
-            color: var(--text-color);
-        }
-
-        .community-details p {
-            color: var(--text-light);
-            margin-bottom: 15px;
-            font-size: 0.9rem;
-        }
-
-        .community-creator {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .creator-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .creator-info small {
-            color: var(--text-light);
-            font-size: 0.8rem;
-        }
-
-        .members-card {
-            background-color: var(--card-bg);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: var(--card-shadow);
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .members-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .members-header h3 {
-            color: var(--text-color);
-        }
-
-        .member-count {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 3px 8px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-        }
-
-        .member-list {
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-
-        .member-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .member-item:last-child {
-            border-bottom: none;
-        }
-
-        .member-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .member-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .member-name {
-            font-size: 0.9rem;
-        }
-
-        .member-role {
-            font-size: 0.8rem;
-            color: var(--text-light);
-        }
-
-        .message-btn {
-            background-color: transparent;
-            color: var(--primary-color);
-            border: 1px solid var(--primary-color);
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-
-        .message-btn:hover {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .dashboard-content {
-            flex: 3;
-            background-color: var(--card-bg);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: var(--card-shadow);
-        }
-
-        /* Create post form */
-        .create-post {
-            background-color: var(--card-bg);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: var(--card-shadow);
-            border: 1px solid var(--border-color);
-        }
-
-        .post-form {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .post-input {
-            width: 100%;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            margin-bottom: 15px;
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            resize: none;
-            min-height: 100px;
-        }
-
-        .post-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(87, 171, 210, 0.2);
-        }
-
-        .post-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .file-label {
-            display: flex;
-            align-items: center;
-            color: var(--text-light);
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 5px;
-            transition: var(--transition);
-        }
-
-        .file-label:hover {
-            background-color: var(--hover-bg);
-            color: var(--primary-color);
-        }
-
-        .file-label i {
-            margin-right: 5px;
-        }
-
-        .post-submit {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .post-submit:hover {
-            background-color: var(--primary-dark);
-        }
-
-        /* Posts container */
-        .posts-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .post-card {
-            background-color: var(--card-bg);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            border: 1px solid var(--border-color);
-        }
-
-        .post-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: 15px;
-        }
-
-        .user-info {
-            flex: 1;
-        }
-
-        .user-name {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .post-time {
-            font-size: 0.8rem;
-            color: var(--text-light);
-        }
-
-        .post-content {
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .post-image {
-            max-width: 100%;
-            max-height: 500px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            display: block;
-        }
-
-        .post-footer {
-            display: flex;
-            align-items: center;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .action-btn {
-            display: flex;
-            align-items: center;
-            background: none;
-            border: none;
-            color: var(--text-light);
-            cursor: pointer;
-            margin-right: 20px;
-            transition: var(--transition);
-        }
-
-        .action-btn:hover {
-            color: var(--primary-color);
-        }
-
-        .action-btn i {
-            margin-right: 5px;
-        }
-
-        .like-btn.liked {
-            color: var(--danger-color);
-        }
-
-        .comment-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-            display: none;
-        }
-
-        .comment-form {
-            display: flex;
-            margin-bottom: 20px;
-        }
-
-        .comment-input {
-            flex: 1;
-            padding: 10px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            transition: var(--transition);
-            margin-right: 10px;
-        }
-
-        .comment-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(87, 171, 210, 0.2);
-        }
-
-        .comment-submit {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0 20px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .comment-submit:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .comments-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .comment-item {
-            display: flex;
-            gap: 10px;
-        }
-
-        .comment-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            align-self: flex-start;
-        }
-
-        .comment-content {
-            flex: 1;
-        }
-
-        .comment-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 5px;
-        }
-
-        .comment-user {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .comment-time {
-            font-size: 0.8rem;
-            color: var(--text-light);
-        }
-
-        .comment-text {
-            font-size: 0.9rem;
-            line-height: 1.4;
-            padding-left: 10px;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 992px) {
-            main {
-                flex-direction: column;
-            }
-
-            aside {
-                max-width: 100%;
-                margin-bottom: 20px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .post-footer {
-                justify-content: space-between;
-            }
-
-            .action-btn {
-                margin-right: 0;
-            }
-        }
-
-        @media (max-width: 576px) {
-            main {
-                padding: 10px;
-            }
-
-            .create-post,
-            .post-card,
-            .community-info-card,
-            .members-card {
-                padding: 15px;
-            }
-
-            .post-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .user-avatar {
-                margin-right: 0;
-                margin-bottom: 10px;
-            }
-
-            .comment-form {
-                flex-direction: column;
-            }
-
-            .comment-input {
-                margin-right: 0;
-                margin-bottom: 10px;
-            }
-
-            .post-actions {
-                flex-direction: column;
-                gap: 10px;
-                align-items: flex-start;
-            }
-
-            .post-submit {
-                width: 100%;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/BookHeaven2.0/css/community_dashboard.css">
 </head>
 
 <body>
@@ -906,8 +454,8 @@ function time_elapsed_string($datetime, $full = false)
                         <div class="member-info">
                             <img src="<?php echo $current_user_avatar; ?>" alt="You" class="member-avatar">
                             <div>
-                                <div class="member-name">You</div>
-                                <div class="member-role">Member</div>
+                                <div class="member-name">You (<?php echo ucfirst($current_user_role); ?>)</div>
+                                <div class="member-role">Member since <?php echo time_elapsed_string($user_role_result['joined_at'] ?? 'now'); ?></div>
                             </div>
                         </div>
                     </div>
@@ -924,8 +472,11 @@ function time_elapsed_string($datetime, $full = false)
                                     </div>
                                 </div>
                                 <button class="message-btn"
-                                    onclick="window.location.href='messages.php?user_id=<?php echo $member['user_id']; ?>'">
+                                    onclick="window.location.href='messages.php?u_id=<?php echo $member['user_id']; ?>&c_id=<?php echo $community_id; ?>'">
                                     <i class="fas fa-envelope"></i>
+                                    <?php if ($unread_msg_count > 0): ?>
+                                        <span class="unread-count"><?php echo $unread_msg_count; ?></span>
+                                    <?php endif; ?>
                                 </button>
                             </div>
                         <?php endwhile; ?>
@@ -957,6 +508,22 @@ function time_elapsed_string($datetime, $full = false)
                     <?php if (!empty($posts)): ?>
                         <?php foreach ($posts as $post): ?>
                             <div class="post-card" id="post-<?php echo $post['id']; ?>">
+                                <?php if ($post['can_edit']): ?>
+                                    <div class="post-options">
+                                        <button class="options-btn" onclick="toggleOptions(this)">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="options-menu">
+                                            <div class="option-item" onclick="editPost(<?php echo $post['id']; ?>, `<?php echo addslashes($post['content']); ?>`)">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </div>
+                                            <div class="option-item delete" onclick="deletePost(<?php echo $post['id']; ?>)">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                                
                                 <div class="post-header">
                                     <img src="<?php echo $post['avatar']; ?>" alt="<?php echo $post['user']; ?>"
                                         class="user-avatar">
@@ -965,7 +532,7 @@ function time_elapsed_string($datetime, $full = false)
                                         <div class="post-time"><?php echo $post['time']; ?></div>
                                     </div>
                                 </div>
-                                <div class="post-content">
+                                <div class="post-content" id="post-content-<?php echo $post['id']; ?>">
                                     <?php echo $post['content']; ?>
                                 </div>
                                 <?php if ($post['image_url']): ?>
@@ -1027,6 +594,24 @@ function time_elapsed_string($datetime, $full = false)
         </div>
     </main>
 
+    <!-- Edit Post Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="edit-modal">
+            <div class="modal-header">
+                <div class="modal-title">Edit Post</div>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form class="edit-form" onsubmit="return savePost(event)">
+                <input type="hidden" id="edit-post-id">
+                <textarea id="edit-post-content" class="edit-textarea" required></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="save-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <?php include_once("../../footer.php"); ?>
     <script>
         // Toggle like button
@@ -1070,7 +655,6 @@ function time_elapsed_string($datetime, $full = false)
         }
 
         // Add new comment
-        // Add new comment
         function addComment(event, postId) {
             event.preventDefault();
 
@@ -1092,13 +676,15 @@ function time_elapsed_string($datetime, $full = false)
                         const commentElement = document.createElement('div');
                         commentElement.className = 'comment-item';
                         commentElement.innerHTML = `
-                <img src="${data.comment.avatar}" alt="${data.comment.user}" class="comment-avatar">
-                <div class="comment-content">
-                    <div class="comment-user">${data.comment.user}</div>
-                    <div class="comment-text">${data.comment.content}</div>
-                    <div class="comment-time">${data.comment.time}</div>
-                </div>
-            `;
+                            <img src="${data.comment.avatar}" alt="${data.comment.user}" class="comment-avatar">
+                            <div class="comment-content">
+                                <div class="comment-header">
+                                    <div class="comment-user">${data.comment.user}</div>
+                                    <div class="comment-time">${data.comment.time}</div>
+                                </div>
+                                <div class="comment-text">${data.comment.content}</div>
+                            </div>
+                        `;
 
                         // Append the new comment to the comments list
                         const commentsList = document.getElementById('comments-list-' + postId);
@@ -1124,6 +710,100 @@ function time_elapsed_string($datetime, $full = false)
 
             return false;
         }
+
+        // Toggle post options menu
+        function toggleOptions(button) {
+            const menu = button.nextElementSibling;
+            menu.classList.toggle('show');
+            
+            // Close other open menus
+            document.querySelectorAll('.options-menu').forEach(otherMenu => {
+                if (otherMenu !== menu && otherMenu.classList.contains('show')) {
+                    otherMenu.classList.remove('show');
+                }
+            });
+        }
+
+        // Close options menu when clicking elsewhere
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.post-options')) {
+                document.querySelectorAll('.options-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+
+        // Delete post
+        function deletePost(postId) {
+            if (!confirm('Are you sure you want to delete this post?')) return;
+            
+            const formData = new FormData();
+            formData.append('post_id', postId);
+            formData.append('delete_post', '1');
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`post-${postId}`).remove();
+                } else {
+                    alert(data.error || 'Failed to delete post');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the post');
+            });
+        }
+
+        // Edit post - open modal
+        function editPost(postId, content) {
+            document.getElementById('edit-post-id').value = postId;
+            document.getElementById('edit-post-content').value = content.replace(/\\/g, '');
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        // Save edited post
+        function savePost(event) {
+            event.preventDefault();
+            
+            const postId = document.getElementById('edit-post-id').value;
+            const content = document.getElementById('edit-post-content').value;
+            
+            const formData = new FormData();
+            formData.append('post_id', postId);
+            formData.append('content', content);
+            formData.append('update_post', '1');
+            
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`post-content-${postId}`).innerHTML = data.content;
+                    closeModal();
+                } else {
+                    alert(data.error || 'Failed to update post');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the post');
+            });
+            
+            return false;
+        }
+
         // Initialize comment sections as hidden
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.comment-section').forEach(section => {

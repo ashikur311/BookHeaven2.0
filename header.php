@@ -390,7 +390,6 @@ if (isset($_SESSION['user_id'])) {
         </button>
 
         <ul class="nav-links">
-          <li><a href="/BookHeaven2.0/php/allbooks.php"><i class="fas fa-book"></i> <span>Books</span></a></li>
           <li><a href="/BookHeaven2.0/php/music_player.php"><i class="fas fa-music"></i>
               <span>Audio</span></a></li>
           <li><a href="/BookHeaven2.0/php/cart.php"><i class="fas fa-shopping-cart"></i> <span

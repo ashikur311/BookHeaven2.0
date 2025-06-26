@@ -174,7 +174,7 @@
             width: 250px;
             height: 250px;
             border-radius: 10px;
-            object-fit: cover;
+            object-fit:contain;
             margin-bottom: 25px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
             animation: pulse 8s infinite ease-in-out;
@@ -332,7 +332,7 @@
             
             <div class="background-art" id="backgroundArt"></div>
             <div class="now-playing">
-                <img src="assets/default-audiobook-cover.jpg" alt="Audiobook Cover" class="album-art" id="albumArt">
+                <img src="/BookHeaven2.0/assets/default-audiobook-cover.png" alt="Audiobook Cover" class="album-art" id="albumArt">
                 <div class="song-details">
                     <h1 class="song-name" id="songName">No Audiobook Selected</h1>
                     <p class="artist-name" id="artistName">Select an audiobook from the list</p>
