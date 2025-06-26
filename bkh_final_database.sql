@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 25, 2025 at 09:43 PM
+-- Generation Time: Jun 26, 2025 at 06:52 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -42,7 +42,7 @@ CREATE TABLE `admin` (
 --
 
 INSERT INTO `admin` (`admin_id`, `username`, `password`, `email`, `full_name`, `created_at`, `updated_at`) VALUES
-(2, 'Akash', '$2y$10$58tfpeIpQ8wUmdWNViLIKep9tgvIohoKze5TPyoHuv22.ZWNsNnd2', 'ashikur31169@gmail.com', 'Ashikur Rahaman', '2025-06-22 04:50:19', '2025-06-24 15:49:49');
+(2, 'Akash', '$2y$10$58tfpeIpQ8wUmdWNViLIKep9tgvIohoKze5TPyoHuv22.ZWNsNnd2', 'ashikur31169@gmail.com', 'Ashikur Rahaman', '2025-06-22 04:50:19', '2025-06-26 05:06:57');
 
 -- --------------------------------------------------------
 
@@ -269,6 +269,113 @@ INSERT INTO `categories` (`id`, `name`, `created_at`, `updated_at`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `communities`
+--
+
+CREATE TABLE `communities` (
+  `community_id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `cover_image_url` varchar(255) DEFAULT NULL,
+  `privacy` enum('public','private') DEFAULT 'public',
+  `status` enum('active','inactive','banned') DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `communities`
+--
+
+INSERT INTO `communities` (`community_id`, `name`, `description`, `created_by`, `created_at`, `updated_at`, `cover_image_url`, `privacy`, `status`) VALUES
+(3, 'Science Fictions Community', 'Explore space, technology, and imaginative storytelling with fellow fans!', 4, '2025-06-26 15:48:54', '2025-06-26 15:48:54', '/BookHeaven2.0/assets/community_images/science_fictions_community_1750931334.png', 'public', 'active');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `community_members`
+--
+
+CREATE TABLE `community_members` (
+  `member_id` int(11) NOT NULL,
+  `community_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `role` enum('member','moderator','admin') DEFAULT 'member',
+  `joined_at` datetime DEFAULT current_timestamp(),
+  `status` enum('active','banned','pending') DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `community_members`
+--
+
+INSERT INTO `community_members` (`member_id`, `community_id`, `user_id`, `role`, `joined_at`, `status`) VALUES
+(3, 3, 4, 'admin', '2025-06-26 15:48:54', 'active'),
+(4, 3, 106, 'member', '2025-06-26 17:26:56', 'active');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `community_messages`
+--
+
+CREATE TABLE `community_messages` (
+  `message_id` int(11) NOT NULL,
+  `community_id` int(11) NOT NULL,
+  `sender_id` int(11) NOT NULL,
+  `receiver_id` int(11) DEFAULT NULL,
+  `content` text NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `status` enum('sent','delivered','read') DEFAULT 'sent',
+  `is_group_message` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `community_messages`
+--
+
+INSERT INTO `community_messages` (`message_id`, `community_id`, `sender_id`, `receiver_id`, `content`, `created_at`, `status`, `is_group_message`) VALUES
+(1, 3, 106, 4, 'Hi', '2025-06-26 20:47:33', 'read', 0),
+(2, 3, 4, 106, 'Hlw', '2025-06-26 20:48:46', 'read', 0),
+(3, 3, 106, 4, 'Hi', '2025-06-26 20:48:53', 'read', 0),
+(4, 3, 4, 106, 'how are you?', '2025-06-26 20:49:16', 'read', 0),
+(5, 3, 106, 4, 'Hi', '2025-06-26 22:27:18', 'read', 0),
+(6, 3, 4, 106, 'Hlw', '2025-06-26 22:27:27', 'read', 0),
+(7, 3, 4, 106, 'how are you?', '2025-06-26 22:27:46', 'read', 0),
+(8, 3, 4, 106, 'Hlw', '2025-06-26 22:27:49', 'read', 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `community_posts`
+--
+
+CREATE TABLE `community_posts` (
+  `post_id` int(11) NOT NULL,
+  `community_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `content` text NOT NULL,
+  `image_url` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` enum('active','deleted','hidden') DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `community_posts`
+--
+
+INSERT INTO `community_posts` (`post_id`, `community_id`, `user_id`, `content`, `image_url`, `created_at`, `updated_at`, `status`) VALUES
+(1, 3, 4, 'This is very good book', 'post_1750932312.png', '2025-06-26 16:05:12', '2025-06-26 16:05:12', 'active'),
+(2, 3, 4, 'AADASDSXASD', NULL, '2025-06-26 16:15:42', '2025-06-26 22:19:23', 'deleted'),
+(3, 3, 4, 'hi', NULL, '2025-06-26 16:55:04', '2025-06-26 22:19:20', 'deleted'),
+(4, 3, 4, 'jjj', NULL, '2025-06-26 17:18:29', '2025-06-26 22:19:16', 'deleted'),
+(5, 3, 106, 'hu', NULL, '2025-06-26 19:45:04', '2025-06-26 22:17:15', 'deleted');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `events`
 --
 
@@ -420,8 +527,9 @@ INSERT INTO `orders` (`order_id`, `user_id`, `order_date`, `status`, `total_amou
 (5, 4, '2025-06-19 01:33:24', 'delivered', 1060.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.', 'pending'),
 (6, 4, '2025-03-19 01:48:33', 'delivered', 5260.00, 'online', 'Raghunathpur, Narail, Dhaka , Bangladesh.', 'pending'),
 (7, 4, '2025-06-21 10:46:22', 'pending', 780.00, 'cod', 'Raghunathpur, Narail, Dhaka , Bangladesh.', 'pending'),
-(8, 4, '2025-06-24 19:29:50', 'pending', 1960.00, 'online', 'Raghunathpur, Narail, Dhaka , Bangladesh.', 'pending'),
-(16, 4, '2025-06-24 21:41:13', 'confirmed', 1260.00, 'online', 'Raghunathpur, Narail, Dhaka , Bangladesh.', 'confirm');
+(8, 4, '2025-06-24 19:29:50', 'confirmed', 1960.00, 'online', 'Raghunathpur, Narail, Dhaka , Bangladesh.', 'pending'),
+(16, 4, '2025-06-24 21:41:13', 'confirmed', 1260.00, 'online', 'Raghunathpur, Narail, Dhaka , Bangladesh.', 'confirm'),
+(17, 4, '2025-06-26 11:05:20', 'confirmed', 360.00, '', 'Raghunathpur, Narail, Dhaka , Bangladesh.', '');
 
 -- --------------------------------------------------------
 
@@ -453,7 +561,8 @@ INSERT INTO `order_items` (`id`, `order_id`, `book_id`, `quantity`, `price`) VAL
 (10, 7, 5, 1, 520.00),
 (11, 8, 6, 4, 400.00),
 (12, 8, 8, 1, 300.00),
-(20, 16, 7, 1, 1200.00);
+(20, 16, 7, 1, 1200.00),
+(21, 17, 8, 1, 300.00);
 
 -- --------------------------------------------------------
 
@@ -498,6 +607,58 @@ CREATE TABLE `partner_books` (
 
 INSERT INTO `partner_books` (`id`, `partner_id`, `rent_book_id`, `added_at`, `revenue`, `status`, `retuen_date`) VALUES
 (2, 3, 1, '2025-06-25 23:06:55', NULL, 'visible', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `post_comments`
+--
+
+CREATE TABLE `post_comments` (
+  `comment_id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `content` text NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` enum('active','deleted','hidden') DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `post_comments`
+--
+
+INSERT INTO `post_comments` (`comment_id`, `post_id`, `user_id`, `content`, `created_at`, `updated_at`, `status`) VALUES
+(1, 1, 4, 'this is so beautifulskjvksj', '2025-06-26 19:48:18', '2025-06-26 19:48:18', 'active'),
+(2, 3, 106, 'hi', '2025-06-26 20:07:15', '2025-06-26 20:07:15', 'active'),
+(3, 2, 106, 'beautiful', '2025-06-26 20:11:49', '2025-06-26 20:11:49', 'active'),
+(4, 5, 106, 'hi', '2025-06-26 20:30:53', '2025-06-26 20:30:53', 'active');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `post_likes`
+--
+
+CREATE TABLE `post_likes` (
+  `like_id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `post_likes`
+--
+
+INSERT INTO `post_likes` (`like_id`, `post_id`, `user_id`, `created_at`) VALUES
+(2, 1, 4, '2025-06-26 16:27:24'),
+(3, 2, 4, '2025-06-26 16:27:26'),
+(4, 3, 4, '2025-06-26 17:11:56'),
+(5, 4, 4, '2025-06-26 17:18:44'),
+(6, 1, 106, '2025-06-26 17:27:48'),
+(7, 2, 106, '2025-06-26 17:27:51'),
+(8, 3, 106, '2025-06-26 20:13:11');
 
 -- --------------------------------------------------------
 
@@ -706,7 +867,8 @@ CREATE TABLE `transactions` (
 --
 
 INSERT INTO `transactions` (`transaction_id`, `order_id`, `payment_method`, `payment_status`, `transaction_date`, `payment_reference`) VALUES
-(2, 16, '', 'paid', '2025-06-24 21:41:54', 'BKH1750779714103');
+(2, 16, '', 'paid', '2025-06-24 21:41:54', 'BKH1750779714103'),
+(3, 17, '', 'paid', '2025-06-26 11:05:40', 'CARD1750914340941');
 
 -- --------------------------------------------------------
 
@@ -733,7 +895,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `email`, `pass`, `user_profile`, `create_time`, `update_time`, `email_verified`, `two_step_verification`, `last_login`, `login_count`) VALUES
-(4, 'Akash', 'ashikur31169@gmail.com', '$2y$10$mj4OSI2BglfRPndjz58dbOKQS8tTDL6T.KLCYg01p.66wmawUkNI2', 'assets\\user_profile\\akash.jpg', '2025-06-17 16:06:42', '2025-06-25 14:34:41', 0, 0, '2025-06-25 14:34:41', 36),
+(4, 'Akash', 'ashikur31169@gmail.com', '$2y$10$mj4OSI2BglfRPndjz58dbOKQS8tTDL6T.KLCYg01p.66wmawUkNI2', 'assets/user_image/akash.jpg', '2025-06-17 16:06:42', '2025-06-26 22:47:48', 0, 0, '2025-06-26 20:48:24', 38),
 (6, 'clopez37', 'charlotte.lopez91@example.com', '$2y$10$W0U0XjwQVobR82g80Gqr7Ok29IkVino/oYycSZOApfOMtjE677tdG', NULL, '2025-03-02 23:52:05', '2025-06-23 00:14:13', 0, 0, NULL, 0),
 (7, 'ewilliams96', 'evelyn.williams86@example.com', '$2y$10$T1kFDYbkrT4pFiZcw7wVdeITrPSfu9jeeCNvWmImO9lpak3UxLwye', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
 (8, 'rlopez84', 'robert.lopez84@example.com', '$2y$10$kFzOU5yrYv/bfS9nSO4Bl.I.SOhUvzrDKcoBTYv1zvRbaW2s/YYZ.', NULL, '2025-06-22 23:52:05', '2025-06-22 23:52:05', 0, 0, NULL, 0),
@@ -831,7 +993,8 @@ INSERT INTO `users` (`user_id`, `username`, `email`, `pass`, `user_profile`, `cr
 (102, 'hgarcia13', 'harper.garcia49@example.com', '$2y$10$aXVDfk7pg7M5FWXOyj07u.vFgzZaPzWbPrWGJC3johizmZO5m9O3a', NULL, '2025-06-23 00:09:14', '2025-06-23 00:09:14', 0, 0, NULL, 0),
 (103, 'rmartinez43', 'robert.martinez81@example.com', '$2y$10$WuGW5O7bjrC3NhKuD7URY.IbJ1os7WH.b31xqPyKnlWX1dX4uB74K', NULL, '2025-06-23 00:09:14', '2025-06-23 00:09:14', 0, 0, NULL, 0),
 (104, 'ijackson71', 'isabella.jackson86@example.com', '$2y$10$xz2SRc.N6qSGMYKUOAlYJOGHMQ3iQcSdIL974t0j4BTs5SJKfzLda', NULL, '2025-05-12 00:09:14', '2025-06-23 00:22:58', 0, 0, NULL, 0),
-(105, 'amartinez72', 'amelia.martinez7@example.com', '$2y$10$Vis1iUtg1AHmbL1P/0ykGeL0f1O3P1Gy7KvnLSJMyExj0LIko3EOC', NULL, '2025-02-06 00:09:14', '2025-06-23 00:22:42', 0, 0, NULL, 0);
+(105, 'amartinez72', 'amelia.martinez7@example.com', '$2y$10$Vis1iUtg1AHmbL1P/0ykGeL0f1O3P1Gy7KvnLSJMyExj0LIko3EOC', NULL, '2025-02-06 00:09:14', '2025-06-23 00:22:42', 0, 0, NULL, 0),
+(106, 'Argha', 'arahaman221292@bscse.uiu.ac.bd', '$2y$10$QLMqYwhlZ74pBB.0LUlhGuVAl/EUO7VG5OR0q.GVH3il8mzlwjotK', 'assets/user_image/user_106_1750950890.png', '2025-06-26 17:26:12', '2025-06-26 22:45:47', 0, 0, '2025-06-26 22:45:47', 3);
 
 -- --------------------------------------------------------
 
@@ -845,7 +1008,7 @@ CREATE TABLE `user_activities` (
   `login_ip` varchar(45) DEFAULT NULL,
   `login_timestamp` datetime DEFAULT current_timestamp(),
   `logout_time` datetime DEFAULT NULL,
-  `status` enum('active','logged_out') DEFAULT 'active'
+  `status` enum('active','offline') DEFAULT 'active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -886,7 +1049,12 @@ INSERT INTO `user_activities` (`auth_id`, `user_id`, `login_ip`, `login_timestam
 (35, 4, '::1', '2025-06-24 22:34:28', '2025-06-24 22:34:28', 'active'),
 (36, 4, '::1', '2025-06-24 23:48:54', '2025-06-24 23:48:54', 'active'),
 (37, 4, '::1', '2025-06-25 09:55:17', '2025-06-25 09:55:17', 'active'),
-(38, 4, '::1', '2025-06-25 14:34:41', '2025-06-25 14:34:41', 'active');
+(38, 4, '::1', '2025-06-25 14:34:41', '2025-06-25 14:34:41', 'active'),
+(39, 4, '::1', '2025-06-26 09:16:51', '2025-06-26 09:16:51', 'active'),
+(40, 106, '::1', '2025-06-26 17:26:31', '2025-06-26 17:26:31', 'active'),
+(41, 4, '::1', '2025-06-26 20:48:24', '2025-06-26 20:48:24', 'active'),
+(42, 106, '::1', '2025-06-26 22:42:37', '2025-06-26 22:42:37', 'active'),
+(43, 106, '::1', '2025-06-26 22:45:47', '2025-06-26 22:45:47', 'active');
 
 -- --------------------------------------------------------
 
@@ -1030,7 +1198,8 @@ INSERT INTO `user_info` (`user_id`, `birthday`, `phone`, `address`, `userimageur
 (102, '2000-12-24', '900-345-6912', '1610 Magnolia Ave, San Diego, TU 29699', NULL),
 (103, '1977-01-12', '330-716-2463', '4584 Oak Ave, Dallas, FY 61384', NULL),
 (104, '1958-07-25', '382-325-8980', '5275 Main St, Los Angeles, RU 29255', NULL),
-(105, '1961-12-07', '216-303-3019', '5437 Elm St, Phoenix, TR 35148', NULL);
+(105, '1961-12-07', '216-303-3019', '5437 Elm St, Phoenix, TR 35148', NULL),
+(106, '2001-06-04', '01999888430', 'Madaripur,Dhaka', NULL);
 
 -- --------------------------------------------------------
 
@@ -1310,6 +1479,38 @@ ALTER TABLE `categories`
   ADD UNIQUE KEY `name` (`name`);
 
 --
+-- Indexes for table `communities`
+--
+ALTER TABLE `communities`
+  ADD PRIMARY KEY (`community_id`),
+  ADD KEY `fk_community_creator` (`created_by`);
+
+--
+-- Indexes for table `community_members`
+--
+ALTER TABLE `community_members`
+  ADD PRIMARY KEY (`member_id`),
+  ADD UNIQUE KEY `uq_community_member` (`community_id`,`user_id`),
+  ADD KEY `fk_community_member_user` (`user_id`);
+
+--
+-- Indexes for table `community_messages`
+--
+ALTER TABLE `community_messages`
+  ADD PRIMARY KEY (`message_id`),
+  ADD KEY `fk_message_community` (`community_id`),
+  ADD KEY `fk_message_sender` (`sender_id`),
+  ADD KEY `fk_message_receiver` (`receiver_id`);
+
+--
+-- Indexes for table `community_posts`
+--
+ALTER TABLE `community_posts`
+  ADD PRIMARY KEY (`post_id`),
+  ADD KEY `fk_post_community` (`community_id`),
+  ADD KEY `fk_post_user` (`user_id`);
+
+--
 -- Indexes for table `events`
 --
 ALTER TABLE `events`
@@ -1367,6 +1568,22 @@ ALTER TABLE `partner_books`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_partner_rentr_book` (`partner_id`,`rent_book_id`),
   ADD KEY `fk_partner_rent_books_book` (`rent_book_id`);
+
+--
+-- Indexes for table `post_comments`
+--
+ALTER TABLE `post_comments`
+  ADD PRIMARY KEY (`comment_id`),
+  ADD KEY `fk_comment_post` (`post_id`),
+  ADD KEY `fk_comment_user` (`user_id`);
+
+--
+-- Indexes for table `post_likes`
+--
+ALTER TABLE `post_likes`
+  ADD PRIMARY KEY (`like_id`),
+  ADD UNIQUE KEY `uq_post_like` (`post_id`,`user_id`),
+  ADD KEY `fk_like_user` (`user_id`);
 
 --
 -- Indexes for table `questions`
@@ -1559,13 +1776,37 @@ ALTER TABLE `book_writers`
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
+-- AUTO_INCREMENT for table `communities`
+--
+ALTER TABLE `communities`
+  MODIFY `community_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `community_members`
+--
+ALTER TABLE `community_members`
+  MODIFY `member_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `community_messages`
+--
+ALTER TABLE `community_messages`
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `community_posts`
+--
+ALTER TABLE `community_posts`
+  MODIFY `post_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `events`
@@ -1595,13 +1836,13 @@ ALTER TABLE `languages`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `partners`
@@ -1614,6 +1855,18 @@ ALTER TABLE `partners`
 --
 ALTER TABLE `partner_books`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `post_comments`
+--
+ALTER TABLE `post_comments`
+  MODIFY `comment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `post_likes`
+--
+ALTER TABLE `post_likes`
+  MODIFY `like_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `questions`
@@ -1655,19 +1908,19 @@ ALTER TABLE `subscription_transactions`
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `transaction_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `transaction_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=107;
 
 --
 -- AUTO_INCREMENT for table `user_activities`
 --
 ALTER TABLE `user_activities`
-  MODIFY `auth_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `auth_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
 -- AUTO_INCREMENT for table `user_billing_address`
@@ -1764,6 +2017,34 @@ ALTER TABLE `cart`
   ADD CONSTRAINT `fk_cart_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `communities`
+--
+ALTER TABLE `communities`
+  ADD CONSTRAINT `fk_community_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `community_members`
+--
+ALTER TABLE `community_members`
+  ADD CONSTRAINT `fk_community_member_community` FOREIGN KEY (`community_id`) REFERENCES `communities` (`community_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_community_member_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `community_messages`
+--
+ALTER TABLE `community_messages`
+  ADD CONSTRAINT `fk_message_community` FOREIGN KEY (`community_id`) REFERENCES `communities` (`community_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_message_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_message_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `community_posts`
+--
+ALTER TABLE `community_posts`
+  ADD CONSTRAINT `fk_post_community` FOREIGN KEY (`community_id`) REFERENCES `communities` (`community_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_post_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `event_participants`
 --
 ALTER TABLE `event_participants`
@@ -1795,6 +2076,20 @@ ALTER TABLE `partners`
 ALTER TABLE `partner_books`
   ADD CONSTRAINT `fk_partner_rent_books_book` FOREIGN KEY (`rent_book_id`) REFERENCES `rent_books` (`rent_book_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_partner_rent_books_partner` FOREIGN KEY (`partner_id`) REFERENCES `partners` (`partner_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `post_comments`
+--
+ALTER TABLE `post_comments`
+  ADD CONSTRAINT `fk_comment_post` FOREIGN KEY (`post_id`) REFERENCES `community_posts` (`post_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_comment_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `post_likes`
+--
+ALTER TABLE `post_likes`
+  ADD CONSTRAINT `fk_like_post` FOREIGN KEY (`post_id`) REFERENCES `community_posts` (`post_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_like_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `questions`
